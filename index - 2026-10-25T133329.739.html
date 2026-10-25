@@ -1,0 +1,1402 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PréventIA Réseau</title>
+<meta name="description" content="Laboratoire collaboratif d'innovation IA des Services de Prévention et de Santé au Travail.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Cpath d='M24 8Q33.5 7.5 37.9 16Q43 24 37.9 32Q33.5 40.5 24 40Q14.5 40.5 10.1 32Q5 24 10.1 16Q14.5 7.5 24 8Z' fill='none' stroke='%2328a3a0' stroke-width='2.4'/%3E%3Cg fill='%231f3a68'%3E%3Ccircle cx='24' cy='8' r='4'/%3E%3Ccircle cx='37.9' cy='32' r='4'/%3E%3Ccircle cx='10.1' cy='32' r='4'/%3E%3C/g%3E%3Cg fill='%2328a3a0'%3E%3Ccircle cx='37.9' cy='16' r='4'/%3E%3Ccircle cx='24' cy='40' r='4'/%3E%3Ccircle cx='10.1' cy='16' r='4'/%3E%3C/g%3E%3Ccircle cx='24' cy='24' r='6' fill='%23f0913a'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+/* ================= Design tokens ================= */
+:root{
+  --navy: oklch(0.32 0.08 255);
+  --navy-2: oklch(0.42 0.1 255);
+  --navy-soft: oklch(0.95 0.02 255);
+  --teal: oklch(0.63 0.1 190);
+  --teal-ink: oklch(0.45 0.08 195);
+  --teal-soft: oklch(0.95 0.03 190);
+  --orange: oklch(0.72 0.15 55);
+  --orange-ink: oklch(0.52 0.14 50);
+  --orange-soft: oklch(0.96 0.04 65);
+  --green: oklch(0.58 0.13 150);
+  --green-soft: oklch(0.95 0.04 150);
+  --red: oklch(0.56 0.18 25);
+  --red-soft: oklch(0.96 0.03 25);
+  --ink: oklch(0.27 0.02 255);
+  --muted: oklch(0.5 0.02 255);
+  --line: oklch(0.91 0.01 255);
+  --bg: oklch(0.985 0.004 90);
+  --card: #fff;
+  --radius: 16px;
+  --shadow: 0 1px 2px oklch(0.3 0.03 255 / .06), 0 8px 24px oklch(0.3 0.03 255 / .06);
+  --font: "DM Sans", system-ui, sans-serif;
+  --serif: "DM Serif Display", Georgia, serif;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 var(--font);-webkit-font-smoothing:antialiased}
+a{color:var(--navy-2)}
+h1,h2,h3{line-height:1.2;margin:0 0 .5em;color:var(--navy)}
+h1{font-family:var(--serif);font-weight:400;font-size:clamp(2rem,5vw,3.3rem);letter-spacing:-.01em}
+h2{font-family:var(--serif);font-weight:400;font-size:clamp(1.5rem,3vw,2rem)}
+h3{font-size:1.08rem;font-weight:700}
+p{margin:0 0 1em}
+:focus-visible{outline:3px solid var(--orange);outline-offset:2px;border-radius:6px}
+.wrap{max-width:1180px;margin:0 auto;padding:0 16px}
+.skip{position:absolute;left:-999px;top:8px;background:var(--navy);color:#fff;padding:8px 14px;border-radius:8px;z-index:100}
+.skip:focus{left:8px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.muted{color:var(--muted)}
+.small{font-size:.875rem}
+
+/* ================= Top bar ================= */
+.topbar{position:sticky;top:0;z-index:40;background:oklch(0.985 0.004 90 / .92);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.bar{display:flex;align-items:center;gap:20px;height:66px}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--navy);font-weight:700;font-size:1.08rem;white-space:nowrap}
+.brand b{color:var(--teal-ink);font-weight:700}
+#nav{display:flex;gap:2px;flex:1}
+#nav a{white-space:nowrap;text-decoration:none;color:var(--ink);padding:8px 10px;border-radius:10px;font-weight:500;font-size:.94rem}
+#nav a:hover{background:var(--navy-soft)}
+#nav a[aria-current=page]{background:var(--navy-soft);color:var(--navy)}
+.bar-right{display:flex;align-items:center;gap:10px}
+.avatar{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:var(--teal-soft);color:var(--teal-ink);font-weight:700;font-size:.85rem;text-decoration:none;flex:none}
+.burger{display:none;background:none;border:1px solid var(--line);border-radius:10px;width:42px;height:40px;font-size:1.2rem;cursor:pointer;color:var(--navy)}
+.demo-banner{background:var(--orange-soft);color:var(--orange-ink);text-align:center;font-size:.88rem;padding:6px 12px;font-weight:500}
+.demo-banner button{background:none;border:0;color:inherit;text-decoration:underline;cursor:pointer;font:inherit}
+@media (max-width:1180px){
+  .burger{display:block}
+  #nav{display:none;position:absolute;top:66px;left:0;right:0;background:var(--card);flex-direction:column;padding:10px 16px 16px;border-bottom:1px solid var(--line);box-shadow:var(--shadow)}
+  #nav.open{display:flex}
+  #nav a{padding:12px}
+  .bar-right .btn-label{display:none}
+}
+
+/* ================= Buttons & forms ================= */
+.btn{white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid transparent;border-radius:12px;padding:11px 18px;font:600 .95rem var(--font);cursor:pointer;text-decoration:none;transition:transform .15s, box-shadow .15s, background .15s;min-height:44px}
+.btn:active{transform:translateY(1px)}
+.btn-primary{background:var(--navy);color:#fff}
+.btn-primary:hover{background:var(--navy-2)}
+.btn-accent{background:var(--orange);color:oklch(0.22 0.04 50)}
+.btn-accent:hover{box-shadow:0 6px 18px oklch(0.72 0.15 55 / .35)}
+.btn-ghost{background:var(--card);border-color:var(--line);color:var(--navy)}
+.btn-ghost:hover{border-color:var(--teal)}
+.btn-soft{background:var(--teal-soft);color:var(--teal-ink)}
+.btn-danger{background:var(--card);border-color:oklch(0.85 0.06 25);color:var(--red)}
+.btn.sm{padding:7px 12px;min-height:36px;font-size:.88rem;border-radius:10px}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.btn.on{background:var(--teal);color:#fff;border-color:var(--teal)}
+label{font-weight:600;font-size:.92rem;display:block;margin-bottom:6px;color:var(--navy)}
+.hint{font-weight:400;color:var(--muted);font-size:.85rem;display:block;margin-top:2px}
+input[type=text],input[type=email],input[type=password],input[type=number],input[type=date],input[type=search],select,textarea{
+  width:100%;font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:12px;padding:11px 13px;min-height:44px}
+textarea{min-height:110px;resize:vertical}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--teal);box-shadow:0 0 0 4px oklch(0.63 0.1 190 / .15)}
+.field{margin-bottom:18px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.logrow{grid-template-columns:200px 1fr}
+@media(max-width:640px){.row2,.logrow{grid-template-columns:1fr}}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip-radio{position:relative}
+.chip-radio input{position:absolute;opacity:0}
+.chip-radio span{display:inline-block;padding:8px 14px;border:1px solid var(--line);border-radius:999px;background:var(--card);cursor:pointer;font-weight:500;font-size:.92rem}
+.chip-radio input:checked+span{background:var(--navy);color:#fff;border-color:var(--navy)}
+.chip-radio input:focus-visible+span{outline:3px solid var(--orange);outline-offset:2px}
+.choice{display:grid;gap:10px}
+.choice.c3{grid-template-columns:repeat(3,1fr)}
+@media(max-width:700px){.choice.c3{grid-template-columns:1fr}}
+.choice label{font-weight:400;margin:0;display:flex;gap:10px;align-items:flex-start;border:1px solid var(--line);border-radius:12px;padding:12px 14px;cursor:pointer;background:var(--card);color:var(--ink)}
+.choice label:has(input:checked){border-color:var(--teal);background:var(--teal-soft)}
+.choice input{margin-top:4px;accent-color:var(--teal)}
+.choice b{display:block;color:var(--navy)}
+.stop{display:none;background:var(--red-soft);border:1px solid oklch(0.85 0.06 25);color:oklch(0.42 0.14 25);padding:12px 14px;border-radius:12px;margin-top:10px}
+.stop.show{display:block}
+
+/* ================= Cards / badges ================= */
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:22px;box-shadow:var(--shadow)}
+.card.flat{box-shadow:none}
+.grid{display:grid;gap:18px}
+.g2{grid-template-columns:repeat(2,1fr)}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g4{grid-template-columns:repeat(4,1fr)}
+@media(max-width:960px){.g3,.g4{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:640px){.g2,.g3,.g4{grid-template-columns:1fr}}
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:.78rem;font-weight:600;padding:3px 10px;border-radius:999px;background:var(--navy-soft);color:var(--navy);white-space:nowrap}
+.b-teal{background:var(--teal-soft);color:var(--teal-ink)}
+.b-orange{background:var(--orange-soft);color:var(--orange-ink)}
+.b-green{background:var(--green-soft);color:oklch(0.42 0.11 150)}
+.b-red{background:var(--red-soft);color:var(--red)}
+.b-gray{background:oklch(0.95 0.005 255);color:var(--muted)}
+.b-line{background:transparent;border:1px dashed var(--line);color:var(--muted)}
+.badges{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.item{display:flex;flex-direction:column;gap:6px;text-decoration:none;color:inherit;transition:border-color .15s, transform .15s}
+.item:hover{border-color:var(--teal);transform:translateY(-2px)}
+.item h3{margin:0}
+.item p{margin:0;color:var(--muted);font-size:.93rem;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.item .more{margin-top:auto;padding-top:8px;font-weight:600;color:var(--teal-ink);font-size:.9rem}
+.meta{font-size:.84rem;color:var(--muted)}
+
+/* ================= Page structure ================= */
+main{min-height:70vh}
+.page{padding:36px 0 64px}
+.page-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:24px}
+.page-head p{margin:0;color:var(--muted)}
+.eyebrow{font-size:.78rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--teal-ink);margin-bottom:10px;display:block}
+section.band{padding:64px 0}
+.layout{display:grid;grid-template-columns:1fr 340px;gap:24px;align-items:start}
+@media(max-width:960px){.layout{grid-template-columns:1fr}}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px}
+.toolbar>*{flex:1 1 160px;max-width:260px}
+.toolbar input[type=search]{max-width:none;flex:2 1 220px}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:22px;overflow-x:auto}
+.tabs a{padding:10px 16px;text-decoration:none;color:var(--muted);font-weight:600;border-bottom:3px solid transparent;white-space:nowrap}
+.tabs a[aria-current=page]{color:var(--navy);border-color:var(--orange)}
+.empty{text-align:center;padding:40px 20px;color:var(--muted)}
+.empty svg{margin-bottom:10px}
+.loading{padding:80px 0;text-align:center;color:var(--muted)}
+.dots::after{content:'…';animation:blink 1.2s infinite}
+@keyframes blink{50%{opacity:.2}}
+
+/* ================= Hero ================= */
+.hero{padding:56px 0 40px;position:relative;overflow:hidden}
+.hero::before{content:"";position:absolute;inset:-30% -10% auto auto;width:720px;height:720px;background:radial-gradient(closest-side, oklch(0.63 0.1 190 / .12), transparent);pointer-events:none}
+.hero-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:32px;align-items:center}
+@media(max-width:900px){.hero-grid{grid-template-columns:1fr}.hero-art{order:-1;max-width:420px;margin:0 auto}}
+.hero-img{display:block;width:100%;height:auto;max-height:480px;object-fit:cover;border-radius:24px;box-shadow:var(--shadow)}
+.hero h1 em{font-style:normal;color:var(--teal-ink)}
+.lead{font-size:1.15rem;color:var(--muted);max-width:560px}
+.cta{display:flex;gap:12px;flex-wrap:wrap;margin-top:24px}
+.trust{display:flex;gap:18px;flex-wrap:wrap;margin-top:26px;font-size:.88rem;color:var(--muted)}
+.trust span{display:flex;align-items:center;gap:6px}
+
+/* Constellation */
+.const .ln{stroke:var(--teal);stroke-width:1.4;opacity:.45}
+.const .ln.thin{opacity:.22}
+.const .x{stroke:var(--navy-2);stroke-width:1;opacity:.25;stroke-dasharray:3 6}
+.const .flow{fill:none;stroke:var(--orange);stroke-width:2;stroke-dasharray:4 9;opacity:.8;animation:flow 7s linear infinite}
+.const .nd{transform-box:fill-box;transform-origin:center;animation:pulse 5s ease-in-out infinite}
+.const .nd-n{fill:var(--navy)}
+.const .nd-t{fill:var(--teal)}
+.const .nd-c{fill:#fff;stroke:var(--navy);stroke-width:3}
+.const .halo{fill:var(--orange);opacity:.14;transform-box:fill-box;transform-origin:center;animation:pulse 6s ease-in-out infinite}
+.const .core{fill:var(--orange)}
+.const .lbl{font:600 13px var(--font);fill:var(--navy)}
+.const .lbl-bg{fill:#fff;stroke:var(--line)}
+@keyframes flow{to{stroke-dashoffset:-130}}
+@keyframes pulse{50%{transform:scale(1.15)}}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+
+/* Pillars, cycle, traffic light */
+.pillar{position:relative}
+.pillar .ic{width:48px;height:48px;border-radius:14px;display:grid;place-items:center;margin-bottom:14px}
+.cycle{list-style:none;padding:0;margin:0;display:flex;gap:6px;counter-reset:c}
+.cycle li{flex:1;position:relative;text-align:center;font-size:.82rem;font-weight:600;color:var(--muted);padding-top:38px}
+.cycle li span{position:absolute;top:0;left:50%;transform:translateX(-50%);width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:oklch(0.94 0.005 255);color:var(--muted);font-size:.8rem;z-index:1}
+.cycle li::before{content:"";position:absolute;top:14px;left:-50%;right:50%;height:3px;background:oklch(0.93 0.005 255)}
+.cycle li:first-child::before{display:none}
+.cycle li.done span{background:var(--teal);color:#fff}
+.cycle li.done::before,.cycle li.cur::before{background:var(--teal)}
+.cycle li.cur span{background:var(--orange);color:#fff;box-shadow:0 0 0 5px var(--orange-soft)}
+.cycle li.cur,.cycle li.done{color:var(--navy)}
+.cycle.big li{font-size:.95rem;padding-top:52px}
+.cycle.big li span{width:42px;height:42px;font-size:1rem}
+.cycle.big li::before{top:20px}
+.cycle .d{display:block;font-weight:400;font-size:.82rem;color:var(--muted);margin-top:4px;padding:0 4px}
+@media(max-width:640px){.cycle.big .d{display:none}}
+.feu{border-top:5px solid}
+.feu.v{border-color:var(--green)} .feu.o{border-color:var(--orange)} .feu.r{border-color:var(--red)}
+.feu ul{padding-left:18px;margin:8px 0 0;color:var(--muted);font-size:.93rem}
+
+/* Detail pages */
+.sec{margin-bottom:22px}
+.sec h3{font-size:.8rem;text-transform:uppercase;letter-spacing:.08em;color:var(--teal-ink);margin-bottom:6px}
+.sec p,.sec div.txt{margin:0;white-space:normal}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:8px 14px;font-size:.92rem}
+.kv dt{color:var(--muted)} .kv dd{margin:0;font-weight:500}
+.fiche{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+@media(max-width:700px){.fiche{grid-template-columns:1fr}}
+.fiche .sec{background:var(--bg);border-radius:12px;padding:14px 16px;margin:0}
+.fiche .num{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--navy);color:#fff;font-size:.72rem;margin-right:6px}
+.fiche .empty-v{color:var(--muted);font-style:italic}
+.comment{display:flex;gap:12px;padding:14px 0;border-top:1px solid var(--line)}
+.comment .avatar{width:32px;height:32px;font-size:.75rem}
+.comment .who{font-weight:600;font-size:.9rem;color:var(--navy)}
+.log-k{font-size:.72rem}
+pre.prompt{white-space:pre-wrap;background:oklch(0.97 0.01 255);border:1px solid var(--line);border-radius:12px;padding:16px;font:14px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;margin:0}
+.note{background:var(--teal-soft);border-radius:12px;padding:12px 14px;font-size:.92rem;color:var(--teal-ink)}
+.note.warn{background:var(--orange-soft);color:var(--orange-ink)}
+
+/* KPI / charts */
+.kpi .v{font-family:var(--serif);font-size:2.2rem;color:var(--navy);line-height:1}
+.kpi .l{font-size:.86rem;color:var(--muted);margin-top:6px}
+.kpi .s{font-size:.75rem;margin-top:6px}
+.bars{display:grid;gap:10px}
+.bar-row{display:grid;grid-template-columns:150px 1fr 40px;gap:10px;align-items:center;font-size:.88rem}
+.bar-track{height:12px;background:oklch(0.95 0.005 255);border-radius:99px;overflow:hidden}
+.bar-fill{height:100%;border-radius:99px;background:var(--teal)}
+table{width:100%;border-collapse:collapse;font-size:.92rem}
+th,td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:.78rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.table-wrap{overflow-x:auto}
+
+/* Passport */
+.pass{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.stamp{text-align:center;padding:12px 6px;border-radius:12px;border:1px dashed var(--line);font-size:.78rem;color:var(--muted)}
+.stamp i{font-style:normal;font-size:1.5rem;display:block;filter:grayscale(1);opacity:.4}
+.stamp.got{border-style:solid;border-color:var(--teal);background:var(--teal-soft);color:var(--teal-ink);font-weight:600}
+.stamp.got i{filter:none;opacity:1}
+
+/* Auth */
+.auth{display:grid;grid-template-columns:1fr 1fr;min-height:calc(100vh - 66px)}
+.auth-art{background:var(--navy);color:#fff;padding:48px;display:flex;flex-direction:column;justify-content:center}
+.auth-art h2{color:#fff}
+.auth-art .const .lbl{fill:#fff}.auth-art .const .nd-n{fill:#fff}.auth-art .const .nd-c{fill:var(--navy);stroke:#fff}
+.auth-art .const .lbl-bg{fill:var(--navy);stroke:oklch(1 0 0 / .25)}
+.auth-form{display:flex;align-items:center;justify-content:center;padding:40px 16px}
+.auth-form .card{width:100%;max-width:440px}
+@media(max-width:900px){.auth{grid-template-columns:1fr}.auth-art{display:none}}
+
+/* Toast & modal */
+#toasts{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);display:grid;gap:8px;z-index:90;width:min(92vw,440px)}
+.toast{background:var(--navy);color:#fff;padding:12px 16px;border-radius:12px;box-shadow:var(--shadow);font-weight:500;animation:up .25s ease}
+.toast.err{background:var(--red)}
+@keyframes up{from{transform:translateY(10px);opacity:0}}
+dialog{border:0;border-radius:var(--radius);padding:0;max-width:640px;width:92vw;box-shadow:0 20px 60px oklch(0.2 0.03 255 / .3)}
+dialog::backdrop{background:oklch(0.2 0.03 255 / .45)}
+dialog .dlg{padding:26px}
+dialog .dlg-foot{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}
+@media(max-width:640px){.hide-sm{display:none}.welcome{grid-template-columns:1fr!important}}
+footer{border-top:1px solid var(--line);padding:28px 0;color:var(--muted);font-size:.86rem}
+footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+</style>
+</head>
+<body>
+<a class="skip" href="#app">Aller au contenu</a>
+<div id="banner"></div>
+<header class="topbar"><div class="wrap bar" id="bar"></div></header>
+<main id="app" tabindex="-1"><div class="loading"><span class="dots">Chargement</span></div></main>
+<footer><div class="wrap">
+  <span>PréventIA Réseau — laboratoire collaboratif d'innovation IA des SPSTI · pilote SPSTI 23/87</span>
+  <span>L'IA est un moyen, jamais une fin · 🔴 Aucune donnée de santé ni nominative</span>
+</div></footer>
+<div id="toasts" role="status" aria-live="polite"></div>
+<dialog id="dlg"><div class="dlg" id="dlg-body"></div></dialog>
+
+<script>
+"use strict";
+/* =====================================================================
+   PréventIA Réseau — application monofichier
+   Données : Supabase (UE, Irlande) protégé par RLS · ou mode démo local
+   ===================================================================== */
+const CONFIG = {
+  url: 'https://vjiryvqyijfljzsaekee.supabase.co',
+  key: 'sb_publishable_I7Ao0-YCve34t6qTrhGc7A_M5Fduxg1' // clé publique : la sécurité repose sur la RLS côté base
+};
+let sb = null;
+try { if (window.supabase) sb = window.supabase.createClient(CONFIG.url, CONFIG.key); } catch (e) { sb = null; }
+
+/* Image du hero : déposer le fichier dans le dossier assets/ du dépôt GitHub */
+const HERO_IMG = 'assets/hero.png';
+
+/* ---------------- Référentiels ---------------- */
+const JOBS = ['Médecin du travail','Infirmier·e en santé au travail','IPRP / préventeur','Ergonome','Psychologue du travail','Assistant·e en santé au travail','Secrétariat / accueil','Fonctions administratives','Informatique','Direction','Tous métiers'];
+const ROLES = { collaborateur:'Collaborateur', experimentateur:'Expérimentateur', animateur:'Animateur pilote', admin_spsti:'Administrateur SPSTI' };
+const IDEA_ST = { nouvelle:['Nouvelle','b-gray'], a_etudier:['À étudier',''], retenue:['Retenue','b-teal'], en_test:['En test','b-orange'], partagee:['Solution partagée','b-green'], non_retenue:['Non retenue','b-line'] };
+const EXP_ST = { a_etudier:['Idée à étudier','b-gray'], selectionnee:['Sélectionnée',''], en_test:['En cours de test','b-orange'], en_evaluation:['En évaluation','b-teal'], validee:['Validée pour un usage défini','b-green'], partagee:['Partagée avec le réseau','b-green'], suspendue:['Suspendue / abandonnée','b-line'] };
+const IDEA_STEP = { nouvelle:1, a_etudier:1, retenue:2, en_test:2, partagee:4, non_retenue:1 };
+const EXP_STEP = { a_etudier:1, selectionnee:2, en_test:2, en_evaluation:3, validee:3, partagee:4, suspendue:2 };
+const FREQ = { quotidien:'Tous les jours', hebdo:'Chaque semaine', mensuel:'Chaque mois', ponctuel:'Ponctuellement' };
+const IMPACT = { faible:'Faible', moyen:'Moyen', fort:'Fort' };
+const DATA = { vert:['🟢','Fictif ou public','b-green'], orange:['🟠','Interne non nominatif','b-orange'] };
+const VIS = { prive:['🔒','Privé'], spsti:['🏢','Mon SPSTI'], reseau:['🌐','Réseau'] };
+const MATURITY = {
+  reference:['Outil externe référencé','Non évalué par le SPSTI : usage personnel sous conditions','b-gray'],
+  prototype:['Prototype expérimental','Réservé aux tests encadrés','b-orange'],
+  evalue:['Évalué dans un contexte précis','Résultats documentés, conditions limitées','b-teal'],
+  autorise:['Autorisé pour un usage défini','Validé par la gouvernance (DPO, DSI, direction)','b-green']
+};
+const LOG_K = { observation:['Observation',''], resultat:['Résultat','b-teal'], risque:['Risque / limite','b-red'], decision:['Décision','b-green'] };
+const INSPIRE = [
+  ['Rédiger plus vite les comptes rendus', "Après chaque action en entreprise, je passe beaucoup de temps à mettre en forme le compte rendu à partir de mes notes."],
+  ['Adapter un support à plusieurs publics', "Je dois réécrire le même message de prévention pour des salariés, des managers et des dirigeants."],
+  ['Retrouver une procédure interne', "Je perds du temps à chercher la bonne version d'une procédure ou d'un modèle de document."],
+  ['Préparer une action de sensibilisation', "Construire un quiz ou un support d'animation sur un risque prend plusieurs heures."],
+  ['Répondre aux questions fréquentes des adhérents', "Nous répondons souvent aux mêmes questions administratives par téléphone et par e-mail."],
+  ['Faire une veille réglementaire', "Suivre les nouveaux textes et les publications INRS demande du temps à chacun de nous."]
+];
+
+/* ---------------- État ---------------- */
+const S = { demo:false, user:null, profile:null, memberships:[], orgs:{}, profiles:{}, org:null, role:null, netAdmin:false };
+const CUR = {};       // données de la page courante
+const F = { ideas:{}, exps:{}, prompts:{}, dash:{ period:'all', job:'' } }; // filtres conservés
+
+/* ---------------- Utilitaires ---------------- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const nl = s => esc(s).replace(/\n/g,'<br>');
+const fmtDate = d => d ? new Date(d).toLocaleDateString('fr-FR',{ day:'numeric', month:'short', year:'numeric' }) : '';
+const newId = () => (crypto.randomUUID ? crypto.randomUUID() : 'id-' + Math.random().toString(36).slice(2) + Date.now());
+const initials = n => (n||'?').replace(/[^\p{L}\s-]/gu,'').split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join('') || '?';
+const badge = (t, c='') => `<span class="badge ${c}">${t}</span>`;
+const isMod = () => ['animateur','admin_spsti'].includes(S.role);
+const isAdmin = () => S.role === 'admin_spsti';
+const canExp = () => ['experimentateur','animateur','admin_spsti'].includes(S.role);
+const orgName = id => S.orgs[id]?.short_name || S.orgs[id]?.name || 'SPSTI partenaire';
+const opts = (obj, sel) => Object.entries(obj).map(([k,v]) => `<option value="${k}" ${k===sel?'selected':''}>${esc(Array.isArray(v)?v[0]:v)}</option>`).join('');
+const jobOpts = (sel, blank='Choisir…') => `<option value="">${blank}</option>` + JOBS.map(j => `<option ${j===sel?'selected':''}>${esc(j)}</option>`).join('');
+function clean(fd){ const o={}; for (const [k,v] of Object.entries(fd)) o[k] = (typeof v==='string' && v.trim()==='') ? null : (typeof v==='string' ? v.trim() : v); return o; }
+function who(item, field='author_id'){
+  if (item.is_demo && !item[field]) return 'Exemple fictif';
+  if (item.org_id && item.org_id !== S.org) return 'Membre — ' + orgName(item.org_id);
+  return S.profiles[item[field]]?.full_name || 'Membre du réseau';
+}
+function toast(msg, kind=''){ const t=document.createElement('div'); t.className='toast '+kind; t.textContent=msg; $('#toasts').append(t); setTimeout(()=>t.remove(), 4200); }
+function errMsg(e){
+  const m = (e && (e.message || e.error_description)) || String(e);
+  if (/row-level security|permission denied/i.test(m)) return "Action non autorisée pour votre rôle.";
+  if (/experiments_validation_documentee/.test(m)) return "Pour valider ou partager une expérimentation, documentez d'abord les résultats et la décision.";
+  if (/Invalid login credentials/i.test(m)) return 'E-mail ou mot de passe incorrect.';
+  if (/Email not confirmed/i.test(m)) return "Votre e-mail n'est pas encore confirmé : cliquez sur le lien reçu.";
+  if (/already registered/i.test(m)) return 'Un compte existe déjà avec cet e-mail.';
+  if (/Password should be/i.test(m)) return 'Mot de passe trop court (6 caractères minimum).';
+  if (/check constraint/i.test(m)) return 'Un champ ne respecte pas le format attendu (longueur ou valeur).';
+  if (/Failed to fetch|NetworkError/i.test(m)) return 'Connexion au serveur impossible. Vérifiez votre réseau.';
+  return m;
+}
+async function copyText(txt){
+  try { await navigator.clipboard.writeText(txt); }
+  catch { const ta=document.createElement('textarea'); ta.value=txt; document.body.append(ta); ta.select(); document.execCommand('copy'); ta.remove(); }
+  toast('Copié dans le presse-papiers ✓');
+}
+function modal(html){ $('#dlg-body').innerHTML = html; $('#dlg').showModal(); }
+function closeModal(){ $('#dlg').close(); }
+function confirmBox(text, okLabel='Confirmer'){
+  return new Promise(res => {
+    modal(`<h3>${esc(text)}</h3><div class="dlg-foot"><button class="btn btn-ghost" id="c-no">Annuler</button><button class="btn btn-primary" id="c-ok">${esc(okLabel)}</button></div>`);
+    $('#c-no').onclick = () => { closeModal(); res(false); };
+    $('#c-ok').onclick = () => { closeModal(); res(true); };
+  });
+}
+
+/* ---------------- Visuels SVG ---------------- */
+function logo(s=34){
+  return `<svg width="${s}" height="${s}" viewBox="0 0 48 48" aria-hidden="true">
+    <path d="M24 8Q33.5 7.5 37.9 16Q43 24 37.9 32Q33.5 40.5 24 40Q14.5 40.5 10.1 32Q5 24 10.1 16Q14.5 7.5 24 8Z" fill="none" stroke="var(--teal)" stroke-width="1.8"/>
+    <g stroke="var(--teal)" stroke-width="1" opacity=".45"><path d="M24 24L24 8M24 24L37.9 32M24 24L10.1 32"/></g>
+    <circle cx="24" cy="24" r="9" fill="var(--orange)" opacity=".18"/>
+    <g fill="var(--navy)"><circle cx="24" cy="8" r="3.4"/><circle cx="37.9" cy="32" r="3.4"/><circle cx="10.1" cy="32" r="3.4"/></g>
+    <g fill="var(--teal)"><circle cx="37.9" cy="16" r="3.4"/><circle cx="24" cy="40" r="3.4"/><circle cx="10.1" cy="16" r="3.4"/></g>
+    <circle cx="24" cy="24" r="4.6" fill="var(--orange)"/></svg>`;
+}
+function constellation(labels=['SPSTI 23/87','SPSTI partenaire','SPSTI partenaire']){
+  const C = [[150,150],[410,135],[280,350]], core = [280,225];
+  let lines='', nodes='', lbl='', flows='';
+  const all = [];
+  C.forEach(([cx,cy],k) => {
+    const pts = [0,1,2,3,4].map(i => { const a=(i*72-90+k*24)*Math.PI/180; return [cx+Math.cos(a)*54, cy+Math.sin(a)*54]; });
+    all.push(pts);
+    pts.forEach((p,i) => { const q=pts[(i+1)%5];
+      lines += `<line class="ln" x1="${p[0].toFixed(1)}" y1="${p[1].toFixed(1)}" x2="${q[0].toFixed(1)}" y2="${q[1].toFixed(1)}"/>`;
+      lines += `<line class="ln thin" x1="${cx}" y1="${cy}" x2="${p[0].toFixed(1)}" y2="${p[1].toFixed(1)}"/>`; });
+    const mx=(cx+core[0])/2+(k-1)*34, my=(cy+core[1])/2-18;
+    flows += `<path class="flow" style="animation-delay:-${k*2}s" d="M${cx} ${cy}Q${mx} ${my} ${core[0]} ${core[1]}"/>`;
+    nodes += pts.map((p,i) => `<circle class="nd ${(i+k)%2?'nd-t':'nd-n'}" style="animation-delay:-${(i*0.9+k*0.5).toFixed(1)}s" cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="${(6+((i+k)%3)*1.6).toFixed(1)}"/>`).join('');
+    nodes += `<circle class="nd-c" cx="${cx}" cy="${cy}" r="9"/>`;
+    const ty = k===2 ? cy+86 : cy-78, w = labels[k].length*7.2+22;
+    lbl += `<rect class="lbl-bg" x="${cx-w/2}" y="${ty-16}" width="${w}" height="26" rx="13"/><text class="lbl" x="${cx}" y="${ty+2}" text-anchor="middle">${esc(labels[k])}</text>`;
+  });
+  const cross = [[all[0][1],all[1][4]],[all[1][2],all[2][0]],[all[2][3],all[0][2]]].map(([a,b]) => `<line class="x" x1="${a[0].toFixed(1)}" y1="${a[1].toFixed(1)}" x2="${b[0].toFixed(1)}" y2="${b[1].toFixed(1)}"/>`).join('');
+  return `<svg class="const" viewBox="40 40 500 420" role="img" aria-label="Réseau vivant : des professionnels de plusieurs SPSTI reliés, l'IA au centre comme outil de connexion">
+    ${cross}${lines}${flows}
+    <circle class="halo" cx="${core[0]}" cy="${core[1]}" r="40"/>
+    <circle class="core" cx="${core[0]}" cy="${core[1]}" r="20"/>
+    <text x="${core[0]}" y="${core[1]+5}" text-anchor="middle" style="font:700 14px var(--font);fill:#fff">IA</text>
+    ${nodes}${lbl}</svg>`;
+}
+function emptyArt(){
+  return `<svg width="120" height="70" viewBox="0 0 120 70" aria-hidden="true"><path d="M20 50Q40 15 60 30T100 22" fill="none" stroke="var(--teal)" stroke-width="1.5" stroke-dasharray="3 5"/><circle cx="20" cy="50" r="6" fill="var(--navy)"/><circle cx="60" cy="30" r="8" fill="var(--orange)" opacity=".85"/><circle cx="100" cy="22" r="6" fill="var(--teal)" opacity=".5"/></svg>`;
+}
+const empty = (txt, cta='') => `<div class="empty">${emptyArt()}<p>${txt}</p>${cta}</div>`;
+function cycle(step, big=false, desc=false){
+  const L = [['Problème','Une problématique vécue sur le terrain'],['Idée','Une piste, même sans connaître l\'IA'],['Test','Des volontaires expérimentent'],['Bilan','On mesure et on décide'],['Partagé','La solution sert à d\'autres']];
+  return `<ol class="cycle ${big?'big':''}" aria-label="Cycle de l'innovation">${L.map(([l,d],i) =>
+    `<li class="${i<step?'done':i===step?'cur':''}" ${i===step?'aria-current="step"':''}><span>${i<step?'✓':i+1}</span>${l}${desc?`<small class="d">${d}</small>`:''}</li>`).join('')}</ol>`;
+}
+const dataBadge = d => DATA[d] ? badge(DATA[d][0]+' '+DATA[d][1], DATA[d][2]) : '';
+function visBadge(item){
+  const [ic,l] = VIS[item.visibility] || VIS.spsti;
+  let b = badge(ic+' '+l, 'b-gray');
+  if (item.visibility==='reseau') b += item.network_status==='approuve' ? badge('Partage réseau validé','b-teal') : item.network_status==='refuse' ? badge('Partage réseau refusé','b-red') : badge('En attente de validation réseau','b-orange');
+  return b;
+}
+const demoBadge = it => it.is_demo ? badge('Exemple fictif','b-line') : '';
+const fromOther = it => it.org_id && it.org_id !== S.org ? badge('🌐 ' + esc(orgName(it.org_id)),'b-teal') : '';
+
+/* ================= Mode démo (données locales, rien n'est enregistré) ================= */
+let D = null;
+function seedDemo(){
+  const A='org-a', B='org-b', me='u-me', d = n => new Date(Date.now()-n*864e5).toISOString();
+  D = {
+    organizations:[{id:A,name:'SPSTI 23/87',short_name:'SPSTI 23/87',region:'Creuse · Haute-Vienne'},{id:B,name:'SPSTI Démo',short_name:'SPSTI Démo',region:'Fictif'}],
+    org_secrets:[{org_id:A, join_code:'DEMO2387XX'}],
+    profiles:[{id:me,full_name:'Laure (démo)',job:'Infirmier·e en santé au travail'},{id:'u2',full_name:'Karim (fictif)',job:'IPRP / préventeur'},{id:'u3',full_name:'Sophie (fictif)',job:'Médecin du travail'},{id:'u4',full_name:'Inès (fictif)',job:'Assistant·e en santé au travail'}],
+    memberships:[{org_id:A,user_id:me,role:'admin_spsti',created_at:d(30)},{org_id:A,user_id:'u2',role:'experimentateur',created_at:d(20)},{org_id:A,user_id:'u3',role:'animateur',created_at:d(25)},{org_id:A,user_id:'u4',role:'collaborateur',created_at:d(10)}],
+    network_admins:[{user_id:me}],
+    ideas:[
+      {id:'i1',org_id:A,author_id:'u2',title:"Préparer plus vite la trame d'une fiche d'entreprise",problem:"La mise en forme de la fiche d'entreprise après une visite prend beaucoup de temps : je recopie des paragraphes types et je reformate les tableaux de risques.",job:'IPRP / préventeur',frequency:'hebdo',impact:'fort',solution:"Un modèle de prompt qui transforme mes notes de visite anonymisées en trame structurée à relire.",data_level:'vert',visibility:'spsti',network_status:'aucun',status:'en_test',is_demo:true,created_at:d(18)},
+      {id:'i2',org_id:A,author_id:'u3',title:'Adapter un support de prévention à plusieurs publics',problem:"Un même support (ex. bruit au travail) doit être décliné pour des salariés, des managers et des dirigeants de TPE. Je réécris tout à la main.",job:'Infirmier·e en santé au travail',frequency:'mensuel',impact:'moyen',solution:null,data_level:'vert',visibility:'spsti',network_status:'aucun',status:'retenue',is_demo:true,created_at:d(12)},
+      {id:'i3',org_id:A,author_id:'u4',title:'Retrouver rapidement une information dans nos procédures',problem:"Nos procédures sont nombreuses et dispersées. Trouver la bonne version prend du temps, surtout pour les nouveaux arrivants.",job:'Assistant·e en santé au travail',frequency:'quotidien',impact:'moyen',solution:'Un assistant de recherche limité à nos documents internes non sensibles.',data_level:'orange',visibility:'reseau',network_status:'en_attente',status:'a_etudier',is_demo:true,created_at:d(4)}
+    ],
+    idea_comments:[{id:'c1',idea_id:'i1',author_id:'u3',body:"Exemple fictif — Très utile pour les nouveaux IPRP. Attention à vérifier les références réglementaires proposées.",created_at:d(15)}],
+    idea_interests:[{idea_id:'i1',user_id:'u3',wants_to_test:true},{idea_id:'i1',user_id:'u4',wants_to_test:false},{idea_id:'i2',user_id:'u2',wants_to_test:true}],
+    experiments:[{id:'e1',org_id:A,idea_id:'i1',author_id:'u2',name:"Trame de fiche d'entreprise assistée",problem:"Rédaction longue et répétitive de la fiche d'entreprise.",objective:'Réduire le temps de mise en forme sans perte de qualité.',audience:'IPRP et infirmiers du groupe pilote',hypothesis:"Un prompt structuré réduit d'au moins 30 % le temps de mise en forme.",solution:'Prompt « Trame FE » + relecture humaine systématique.',conditions:'Données 🟢 uniquement : notes anonymisées, aucun nom de salarié ni donnée de santé.',protocol:'3 testeurs × 4 fiches fictives. Chronométrage avant/après, grille qualité relue par un pair.',results:'Exemple fictif : temps moyen de mise en forme passé de 50 à 30 min ; 2 erreurs de référence réglementaire repérées à la relecture.',limits:'Les références réglementaires proposées doivent toujours être vérifiées.',decision:null,status:'en_evaluation',data_level:'vert',visibility:'spsti',network_status:'aucun',time_est_min:20,time_measured_min:20,time_method:'Chronométrage sur 12 fiches fictives (exemple)',satisfaction:4,is_demo:true,created_at:d(14)}],
+    experiment_members:[{experiment_id:'e1',user_id:'u2'},{experiment_id:'e1',user_id:'u3'}],
+    experiment_logs:[{id:'l1',experiment_id:'e1',author_id:'u2',kind:'observation',body:"Exemple fictif — Le prompt gagne en qualité quand on précise le secteur NAF et l'effectif.",created_at:d(9)},{id:'l2',experiment_id:'e1',author_id:'u3',kind:'risque',body:"Exemple fictif — Tentation de coller des notes non anonymisées : rappel du feu tricolore fait en atelier.",created_at:d(6)}],
+    prompts:[
+      {id:'p1',org_id:A,author_id:'u3',title:'Décliner un support de prévention pour 3 publics',description:'Transforme un message de prévention en trois versions adaptées.',problem:'Réécrire un même contenu pour salariés, managers et dirigeants.',job:'Tous métiers',theme:'Communication',task_type:'Rédaction',content:"Tu es un rédacteur spécialisé en prévention des risques professionnels. Voici un message de prévention : [COLLER LE TEXTE, SANS DONNÉE PERSONNELLE].\nRédige trois versions :\n1. Salariés : phrases courtes, 5 messages clés, ton bienveillant.\n2. Managers : rôle d'exemplarité, 3 actions concrètes.\n3. Dirigeant de TPE : obligations essentielles, bénéfices, coût/temps estimé.\nSignale toute affirmation réglementaire à vérifier avec [À VÉRIFIER].",example:'Texte fictif : « Le bruit au-delà de 80 dB(A) impose des mesures de prévention… »',limits:'Les références réglementaires doivent être vérifiées par un professionnel.',data_level:'vert',visibility:'spsti',network_status:'aucun',verified_at:d(5).slice(0,10),is_demo:true,created_at:d(10)},
+      {id:'p2',org_id:B,author_id:null,title:'Synthétiser une procédure en fiche réflexe',description:'Partagé par le SPSTI Démo avec le réseau.',problem:'Rendre une procédure longue utilisable sur le terrain.',job:'Tous métiers',theme:'Organisation',task_type:'Synthèse',content:"Voici une procédure interne non confidentielle : [TEXTE]. Résume-la en fiche réflexe d'une page : objectif, 5 étapes numérotées, erreurs fréquentes, qui contacter. Ne rajoute aucune règle absente du texte.",example:null,limits:"Vérifier que la synthèse n'a rien omis d'important.",data_level:'vert',visibility:'reseau',network_status:'approuve',verified_at:d(20).slice(0,10),is_demo:true,created_at:d(22)}
+    ],
+    prompt_comments:[],
+    tools:[
+      {id:'t1',org_id:A,name:'Assistant conversationnel généraliste (à choisir par le SPSTI)',category:'Assistants conversationnels',purpose:'Aide à la rédaction et à la reformulation.',problem:'Gagner du temps sur les écrits répétitifs.',job:'Tous métiers',maturity:'reference',access:'À définir par la direction et la DSI',allowed_data:'🟢 Textes fictifs, publics, modèles vierges',forbidden_data:'🔴 Données de santé, noms de salariés, dossiers médicaux, documents confidentiels',limits:"Peut inventer des références. Conditions contractuelles et lieu d'hébergement à vérifier avec le DPO.",guide:"Voir la charte d'usage du SPSTI (à rédiger).",example:null,referent:'Groupe pilote IA',url:null,visibility:'spsti',network_status:'aucun',is_demo:true,created_at:d(30)},
+      {id:'t2',org_id:A,name:'Calculateur PICB — méthode OB (PréventIA-LaB)',category:'Prototypes du réseau',purpose:"Évaluer l'atténuation des protections auditives par bandes d'octave.",problem:"Vérifier rapidement l'adéquation d'une protection auditive.",job:'IPRP / préventeur',maturity:'prototype',access:'Lien web, sans compte',allowed_data:'🟢 Mesures sonores sans nom de salarié',forbidden_data:'🔴 Données audiométriques nominatives',limits:'Prototype : ne remplace pas la calculette INRS de référence.',guide:"Saisir le spectre par bande d'octave puis choisir la protection.",example:null,referent:'Laure B.',url:null,visibility:'spsti',network_status:'aucun',is_demo:true,created_at:d(28)}
+    ],
+    challenges:[{id:'ch1',org_id:A,title:'Défi de novembre',question:'Comment réduire le temps consacré à la rédaction de documents professionnels tout en conservant leur qualité ?',ends_on:new Date(Date.now()+30*864e5).toISOString().slice(0,10),active:true,is_demo:true,created_at:d(3)}],
+    audit_log:[]
+  };
+}
+const AUTHORED = ['ideas','experiments','prompts','tools','challenges','idea_comments','prompt_comments','experiment_logs'];
+const DEFAULTS = {
+  ideas:{status:'nouvelle',visibility:'spsti',network_status:'aucun',data_level:'vert'},
+  experiments:{status:'a_etudier',visibility:'spsti',network_status:'aucun',data_level:'vert'},
+  prompts:{visibility:'spsti',network_status:'aucun',data_level:'vert',verified_at:new Date().toISOString().slice(0,10)},
+  tools:{visibility:'spsti',network_status:'aucun',maturity:'reference'},
+  challenges:{active:true}, experiment_logs:{kind:'observation'}
+};
+function demoNormalize(t, r, old){
+  if ('visibility' in r) { if (r.visibility!=='reseau') r.network_status='aucun'; else if (!r.network_status || r.network_status==='aucun') r.network_status='en_attente'; }
+  if (t==='experiments' && ['validee','partagee'].includes(r.status) && (!r.results || !r.decision)) throw new Error('experiments_validation_documentee');
+  if (old && old.status!==r.status && r.org_id) D.audit_log.unshift({id:newId(),org_id:r.org_id,actor_id:S.user.id,action:'statut',target_type:t,target_id:r.id,detail:{de:old.status,vers:r.status},created_at:new Date().toISOString()});
+  if (old && old.network_status!==r.network_status && r.org_id) D.audit_log.unshift({id:newId(),org_id:r.org_id,actor_id:S.user.id,action:'partage_reseau',target_type:t,target_id:r.id,detail:{de:old.network_status,vers:r.network_status},created_at:new Date().toISOString()});
+}
+const CONTENT = ['ideas','experiments','prompts','tools'];
+function demoVisible(t, rows){
+  if (!CONTENT.includes(t)) return t==='profiles' ? rows : rows;
+  return rows.filter(x => x.org_id===S.org || (x.visibility==='reseau' && x.network_status==='approuve'));
+}
+const match = (x, m) => Object.entries(m).every(([k,v]) => x[k]===v);
+
+/* ================= Couche d'accès aux données ================= */
+const api = {
+  async list(t, o={}){
+    const { eq={}, order='created_at', asc=false, limit, inF } = o;
+    if (S.demo) {
+      let r = (D[t]||[]).filter(x => match(x, eq));
+      if (inF) r = r.filter(x => inF[1].includes(x[inF[0]]));
+      r = demoVisible(t, r);
+      if (order) r = [...r].sort((a,b) => ((a[order]??'') > (b[order]??'') ? 1 : -1) * (asc?1:-1));
+      if (limit) r = r.slice(0, limit);
+      return structuredClone(r);
+    }
+    let q = sb.from(t).select('*');
+    for (const [k,v] of Object.entries(eq)) q = q.eq(k, v);
+    if (inF) q = q.in(inF[0], inF[1]);
+    if (order) q = q.order(order, { ascending:asc });
+    if (limit) q = q.limit(limit);
+    const { data, error } = await q; if (error) throw error; return data || [];
+  },
+  async get(t, id){
+    if (S.demo) { const x = demoVisible(t, (D[t]||[]).filter(r => r.id===id))[0]; return x ? structuredClone(x) : null; }
+    const { data, error } = await sb.from(t).select('*').eq('id', id).maybeSingle(); if (error) throw error; return data;
+  },
+  async insert(t, row){
+    if (S.demo) {
+      const r = { ...(DEFAULTS[t]||{}), ...row, id:newId(), created_at:new Date().toISOString(), updated_at:new Date().toISOString(), is_demo:false };
+      if (AUTHORED.includes(t)) r.author_id = S.user.id;
+      if (['idea_interests','experiment_members'].includes(t)) r.user_id = r.user_id || S.user.id;
+      demoNormalize(t, r, null); D[t].push(r); return structuredClone(r);
+    }
+    const { data, error } = await sb.from(t).insert(row).select().maybeSingle(); if (error) throw error; return data;
+  },
+  async update(t, m, patch){
+    if (S.demo) {
+      const x = D[t].find(r => match(r, m)); if (!x) throw new Error('Élément introuvable');
+      const old = { ...x }, nx = { ...x, ...patch, updated_at:new Date().toISOString() };
+      demoNormalize(t, nx, old); Object.assign(x, nx); return structuredClone(x);
+    }
+    const { data, error } = await sb.from(t).update(patch).match(m).select();
+    if (error) throw error; if (!data || !data.length) throw new Error('Action non autorisée pour votre rôle.'); return data[0];
+  },
+  async upsert(t, row, keys){
+    if (S.demo) { const m = Object.fromEntries(keys.map(k => [k,row[k]])); const x = D[t].find(r => match(r,m)); if (x) Object.assign(x,row); else D[t].push({...row}); return; }
+    const { error } = await sb.from(t).upsert(row, { onConflict:keys.join(',') }); if (error) throw error;
+  },
+  async del(t, m){
+    if (S.demo) { D[t] = D[t].filter(x => !match(x, m)); return; }
+    const { error } = await sb.from(t).delete().match(m); if (error) throw error;
+  },
+  async rpc(fn, args){
+    if (S.demo) {
+      if (fn==='regenerate_join_code') { const c = Math.random().toString(36).slice(2,12).toUpperCase(); D.org_secrets[0].join_code=c; return c; }
+      if (fn==='create_organization') { const id=newId(); D.organizations.push({id,name:args.p_name,short_name:args.p_short}); return id; }
+      throw new Error("Non disponible en mode démo.");
+    }
+    const { data, error } = await sb.rpc(fn, args); if (error) throw error; return data;
+  }
+};
+
+/* ================= Contexte utilisateur ================= */
+async function loadContext(){
+  if (S.demo) {
+    S.user = { id:'u-me', email:'demo@exemple.fr' };
+  } else {
+    if (!sb) { S.user=null; return; }
+    const { data:{ session } } = await sb.auth.getSession();
+    S.user = session?.user || null;
+  }
+  if (!S.user) { Object.assign(S, { profile:null, memberships:[], org:null, role:null, netAdmin:false }); return; }
+  const [prof, mems, orgs, na] = await Promise.all([
+    api.get('profiles', S.user.id),
+    api.list('memberships', { eq:{ user_id:S.user.id }, asc:true }),
+    api.list('organizations', { order:'name', asc:true }),
+    api.list('network_admins', { order:null })
+  ]);
+  S.profile = prof || { id:S.user.id, full_name:'', job:null };
+  S.memberships = mems;
+  S.orgs = Object.fromEntries(orgs.map(o => [o.id,o]));
+  S.netAdmin = na.length > 0;
+  let saved = null; try { saved = localStorage.getItem('pr-org'); } catch {}
+  S.org = (mems.find(m => m.org_id===saved) || mems[0])?.org_id || null;
+  S.role = mems.find(m => m.org_id===S.org)?.role || null;
+  const ps = await api.list('profiles', { order:null });
+  S.profiles = Object.fromEntries(ps.map(p => [p.id,p]));
+}
+
+/* ================= Coquille (barre, navigation) ================= */
+function renderShell(page){
+  const logged = !!(S.user && S.org);
+  const links = logged ? [
+    ['', 'Accueil'], ['idees','Idées'], ['experiences','Expérimentations'], ['outils','Boîte à outils'],
+    ['communaute','Communauté'], ['tableau','Tableau de bord'], ...(isAdmin()||S.netAdmin ? [['admin','Administration']] : [])
+  ] : [['','Accueil'], ['connexion','Se connecter']];
+  $('#bar').innerHTML = `
+    <a href="#/" class="brand" aria-label="PréventIA Réseau, accueil">${logo()}<span>PréventIA <b>Réseau</b></span></a>
+    <nav id="nav" aria-label="Navigation principale">${links.map(([h,l]) => `<a href="#/${h}" ${page===h?'aria-current="page"':''}>${l}</a>`).join('')}</nav>
+    <div class="bar-right">
+      ${logged ? `<a class="btn btn-accent sm" href="#/idees/nouvelle">💡 <span class="btn-label">Proposer une idée</span></a>
+      <a class="avatar" href="#/profil" title="Mon profil" aria-label="Mon profil">${esc(initials(S.profile?.full_name))}</a>` : ''}
+      <button class="burger" aria-label="Ouvrir le menu" aria-expanded="false" aria-controls="nav" data-act="burger">☰</button>
+    </div>`;
+  $('#banner').innerHTML = S.demo ? `<div class="demo-banner">Mode démonstration — données fictives, rien n'est enregistré. <button data-act="exitDemo">Quitter la démo</button></div>` : '';
+}
+
+/* ================= Routeur ================= */
+async function route(){
+  const h = location.hash.replace(/^#\/?/, '');
+  const [p='', a, b] = h.split('/');
+  const pub = ['', 'connexion', 'decouvrir'];
+  if (!pub.includes(p) && !S.user) { location.hash = '#/connexion'; return; }
+  if (S.user && !S.org && !['rejoindre','profil','decouvrir'].includes(p)) { location.hash = '#/rejoindre'; return; }
+  if (p==='connexion' && S.user) { location.hash = S.org ? '#/' : '#/rejoindre'; return; }
+  renderShell(p);
+  const app = $('#app');
+  app.innerHTML = '<div class="loading"><span class="dots">Chargement</span></div>';
+  let html;
+  try {
+    const pages = {
+      '': () => (S.user && S.org) ? pageHome() : pageLanding(),
+      decouvrir: pageLanding, connexion: pageAuth, rejoindre: pageJoin,
+      idees: () => a==='nouvelle' ? pageIdeaForm(null) : a ? pageIdea(a) : pageIdeas(),
+      'idee-modifier': () => pageIdeaForm(a),
+      experiences: () => a==='nouvelle' ? pageExpForm(null, b) : a ? pageExp(a) : pageExps(),
+      'experience-modifier': () => pageExpForm(a),
+      outils: () => pageToolbox(a || 'prompts'),
+      prompt: () => pagePrompt(a), 'prompt-nouveau': () => pagePromptForm(null), 'prompt-modifier': () => pagePromptForm(a),
+      'outil-nouveau': () => pageToolForm(null), 'outil-modifier': () => pageToolForm(a),
+      communaute: pageCommunity, tableau: pageDashboard, admin: pageAdmin, profil: pageProfile
+    };
+    html = await (pages[p] || (() => `<div class="wrap page">${empty('Page introuvable.', '<a class="btn btn-ghost" href="#/">Retour à l\'accueil</a>')}</div>`))();
+  } catch (e) {
+    console.error(e);
+    html = `<div class="wrap page"><div class="card">${empty('Impossible de charger cette page : ' + esc(errMsg(e)), '<a class="btn btn-ghost" href="#/">Retour à l\'accueil</a>')}</div></div>`;
+  }
+  app.innerHTML = html;
+  if (CUR.after) { const f = CUR.after; CUR.after = null; f(); }
+  window.scrollTo(0,0);
+}
+const go = h => { if (location.hash === h) route(); else location.hash = h; };
+
+/* ================= Pages : accueil public ================= */
+function pillars(){
+  const P = [
+    ['Partager','Chacun exprime ses problématiques et ses idées, sans vocabulaire technique.','💬','var(--navy-soft)','#/idees'],
+    ['Expérimenter','Des volontaires testent outils, prompts et prototypes sur des cas concrets.','🧪','var(--orange-soft)','#/experiences'],
+    ['Mutualiser','Les SPSTI partagent leurs bilans et réutilisent les solutions validées.','🌐','var(--teal-soft)','#/outils']
+  ];
+  return `<div class="grid g3">${P.map(([t,d,i,bg,h]) => `<a class="card item pillar" href="${h}"><div class="ic" style="background:${bg};font-size:1.4rem">${i}</div><h3>${t}</h3><p style="-webkit-line-clamp:4">${d}</p><span class="more">Découvrir →</span></a>`).join('')}</div>`;
+}
+function feuTricolore(){
+  return `<div class="grid g3">
+    <div class="card feu v"><h3>🟢 Autorisé</h3><p class="muted small">Utilisable dans la plateforme et les tests.</p><ul><li>Données fictives ou synthétiques</li><li>Documents publics (INRS, Code du travail)</li><li>Modèles vierges, procédures non confidentielles</li></ul></div>
+    <div class="card feu o"><h3>🟠 Avec précaution</h3><p class="muted small">Interne au SPSTI, jamais vers un outil IA externe non validé.</p><ul><li>Organisation interne, statistiques agrégées</li><li>Retours d'expérience sans nom</li><li>Documents de travail non nominatifs</li></ul></div>
+    <div class="card feu r"><h3>🔴 Interdit</h3><p class="muted small">Jamais dans la plateforme ni dans un outil IA non autorisé.</p><ul><li>Données de santé, dossiers médicaux (DMST)</li><li>Noms, matricules, coordonnées de salariés</li><li>Documents confidentiels d'adhérents</li></ul></div>
+  </div>`;
+}
+function expCard(e){
+  const st = EXP_ST[e.status] || EXP_ST.a_etudier;
+  return `<a class="card item" href="#/experiences/${e.id}">
+    <div class="badges">${badge(st[0], st[1])}${demoBadge(e)}${fromOther(e)}</div>
+    <h3>${esc(e.name)}</h3><p><b>Problème :</b> ${esc(e.problem)}</p>
+    <div class="meta">${e.solution ? '🛠 ' + esc(e.solution.slice(0,70)) + (e.solution.length>70?'…':'') : ''}</div>
+    <div class="meta">👥 ${esc(e.audience || 'Public à préciser')} · ${VIS[e.visibility][0]} ${VIS[e.visibility][1]}</div>
+    <span class="more">Découvrir →</span></a>`;
+}
+function ideaCard(i, extra=''){
+  const st = IDEA_ST[i.status] || IDEA_ST.nouvelle;
+  return `<a class="card item" href="#/idees/${i.id}">
+    <div class="badges">${badge(st[0], st[1])}${i.data_level==='orange'?badge('🟠','b-orange'):''}${demoBadge(i)}${fromOther(i)}</div>
+    <h3>${esc(i.title)}</h3><p>${esc(i.problem)}</p>
+    <div class="meta">${esc(i.job || 'Tous métiers')} · ${fmtDate(i.created_at)}${extra}</div></a>`;
+}
+async function pageLanding(){
+  if (!D) seedDemo();
+  const exps = D.experiments, ch = D.challenges[0];
+  return `
+  <section class="hero"><div class="wrap hero-grid">
+    <div>
+      <span class="eyebrow">Laboratoire collaboratif des SPSTI</span>
+      <h1>Et si nous faisions de l'IA <em>un projet collectif</em> ?</h1>
+      <p class="lead">Des idées du terrain aux solutions concrètes : expérimentons ensemble l'intelligence artificielle pour améliorer nos pratiques en santé au travail.</p>
+      <div class="cta">
+        <a class="btn btn-accent" href="${S.user?'#/idees/nouvelle':'#/connexion'}">💡 Partager une idée</a>
+        <button class="btn btn-ghost" data-act="scrollExps">Découvrir les expérimentations</button>
+        ${!S.user ? `<button class="btn btn-soft" data-act="startDemo">Explorer la démo</button>` : ''}
+      </div>
+      <div class="trust"><span>🇪🇺 Hébergement UE</span><span>🔒 Données isolées par SPSTI</span><span>🧑‍⚕️ Décision toujours humaine</span></div>
+    </div>
+    <div class="hero-art">
+      <img class="hero-img" src="${HERO_IMG}" alt="Des professionnels de plusieurs SPSTI réunis autour de l'IA" hidden
+        onload="this.hidden=false;this.nextElementSibling.remove()" onerror="this.remove()">
+      <div>${constellation()}</div>
+    </div>
+  </div></section>
+
+  <section class="band" style="padding-top:20px"><div class="wrap">
+    <span class="eyebrow">Trois piliers</span><h2>Partager, expérimenter, mutualiser</h2>
+    <p class="muted" style="max-width:640px">L'IA est un moyen d'améliorer nos pratiques, jamais une fin en soi. On part toujours d'un besoin du terrain.</p>
+    ${pillars()}
+  </div></section>
+
+  <section class="band" style="background:var(--card);border-block:1px solid var(--line)"><div class="wrap">
+    <span class="eyebrow">Comment ça marche</span><h2>Le cycle d'une idée, en 5 étapes visibles</h2>
+    <p class="muted" style="max-width:680px">Chaque idée suit le même chemin. Une idée populaire n'est pas automatiquement validée : on teste, on mesure, puis on décide.</p>
+    <div style="margin-top:30px">${cycle(2, true, true)}</div>
+  </div></section>
+
+  <section class="band"><div class="wrap">
+    <span class="eyebrow">Règle n° 1</span><h2>Le feu tricolore des données</h2>
+    <p class="muted" style="max-width:680px">Chaque idée, prompt et outil affiche son niveau de données. En cas de doute : on considère que c'est rouge.</p>
+    ${feuTricolore()}
+  </div></section>
+
+  <section class="band" id="experimentations" style="padding-top:0"><div class="wrap">
+    <div class="page-head"><div><span class="eyebrow">Expérimentations à découvrir</span><h2 style="margin:0">Exemples de projets</h2></div>${badge('Exemples fictifs, aucun résultat réel','b-line')}</div>
+    <div class="grid g3">${exps.map(e => `<div class="card item"><div class="badges">${badge(EXP_ST[e.status][0],EXP_ST[e.status][1])}${badge('Exemple fictif','b-line')}</div><h3>${esc(e.name)}</h3><p><b>Problème :</b> ${esc(e.problem)}</p><div class="meta">👥 ${esc(e.audience)}</div></div>`).join('')}
+      <div class="card item" style="background:var(--navy);color:#fff;border:0"><h3 style="color:#fff">🎯 ${esc(ch.title)}</h3><p style="color:oklch(1 0 0 / .85);-webkit-line-clamp:6">${esc(ch.question)}</p><a class="btn btn-accent sm" style="margin-top:auto;align-self:flex-start" href="${S.user?'#/idees/nouvelle':'#/connexion'}">Proposer une solution</a></div>
+      <div class="card item"><h3>Pour qui ?</h3><p style="-webkit-line-clamp:8">Médecins du travail, infirmiers, IPRP, ergonomes, psychologues, assistants, équipes administratives et informatiques. Aucune compétence technique requise.</p><a class="btn btn-ghost sm" style="margin-top:auto;align-self:flex-start" href="#/connexion">Rejoindre le pilote</a></div>
+    </div>
+  </div></section>`;
+}
+
+/* ================= Authentification ================= */
+async function pageAuth(){
+  const tab = CUR.authTab || 'login';
+  return `<div class="auth">
+    <div class="auth-art"><span class="eyebrow" style="color:oklch(0.85 0.06 190)">PréventIA Réseau</span>
+      <h2>Un réseau de SPSTI qui apprend ensemble</h2>
+      <p style="color:oklch(1 0 0 / .8)">Proposez une idée en deux minutes, rejoignez un test, réutilisez ce qui marche ailleurs.</p>
+      <div style="max-width:420px;margin-top:20px">${constellation()}</div></div>
+    <div class="auth-form"><div class="card">
+      ${sb ? `<div class="tabs" role="tablist">
+        <a href="#/connexion" role="tab" data-act="authTab" data-t="login" ${tab==='login'?'aria-current="page"':''}>Se connecter</a>
+        <a href="#/connexion" role="tab" data-act="authTab" data-t="signup" ${tab==='signup'?'aria-current="page"':''}>Créer un compte</a></div>
+      ${tab==='login' ? `
+        <form data-form="login">
+          <div class="field"><label for="em">E-mail professionnel</label><input id="em" type="email" name="email" required autocomplete="email"></div>
+          <div class="field"><label for="pw">Mot de passe</label><input id="pw" type="password" name="password" required autocomplete="current-password"></div>
+          <button class="btn btn-primary" style="width:100%" type="submit">Se connecter</button>
+        </form>
+        <p class="small" style="margin-top:14px"><a href="#/connexion" data-act="forgot">Mot de passe oublié ?</a></p>` : `
+        <form data-form="signup">
+          <div class="field"><label for="fn">Prénom et nom</label><input id="fn" type="text" name="full_name" required maxlength="80" autocomplete="name"></div>
+          <div class="field"><label for="jb">Métier</label><select id="jb" name="job" required>${jobOpts('')}</select></div>
+          <div class="field"><label for="em2">E-mail professionnel</label><input id="em2" type="email" name="email" required autocomplete="email"></div>
+          <div class="field"><label for="pw2">Mot de passe <span class="hint">10 caractères minimum conseillés</span></label><input id="pw2" type="password" name="password" required minlength="8" autocomplete="new-password"></div>
+          <p class="small muted">Votre profil (nom, métier) n'est visible que par les membres de votre SPSTI. Aucune coordonnée n'est affichée.</p>
+          <button class="btn btn-primary" style="width:100%" type="submit">Créer mon compte</button>
+        </form>`}` : `<div class="note warn">Serveur indisponible : le module de connexion n'a pas pu être chargé. Vous pouvez explorer la démo.</div>`}
+      <hr style="border:0;border-top:1px solid var(--line);margin:22px 0">
+      <button class="btn btn-soft" style="width:100%" data-act="startDemo">Explorer la démo sans compte</button>
+    </div></div></div>`;
+}
+async function pageJoin(){
+  return `<div class="wrap page" style="max-width:560px">
+    <div class="card"><span class="eyebrow">Dernière étape</span><h2>Rejoindre mon SPSTI</h2>
+    <p class="muted">Saisissez le code d'adhésion transmis par l'administrateur de votre SPSTI. Vous rejoindrez l'espace en tant que collaborateur.</p>
+    <form data-form="join"><div class="field"><label for="jc">Code d'adhésion</label><input id="jc" type="text" name="code" required autocomplete="off" style="text-transform:uppercase;letter-spacing:.15em;font-weight:700"></div>
+    <button class="btn btn-primary" type="submit">Rejoindre</button></form>
+    <p class="small muted" style="margin-top:16px">Pas de code ? Demandez-le à l'animateur du groupe pilote IA. <a href="#/" data-act="logout">Se déconnecter</a></p></div></div>`;
+}
+
+/* ================= Accueil connecté (tableau de bord personnel) ================= */
+async function passportData(){
+  const uid = S.user.id;
+  const [ideas, com, ints, mems, prs, exps] = await Promise.all([
+    api.list('ideas',{eq:{author_id:uid},order:null}), api.list('idea_comments',{eq:{author_id:uid},order:null}),
+    api.list('idea_interests',{eq:{user_id:uid},order:null}), api.list('experiment_members',{eq:{user_id:uid},order:null}),
+    api.list('prompts',{eq:{author_id:uid},order:null}), api.list('experiments',{eq:{author_id:uid},order:null})
+  ]);
+  return [
+    ['🌱','Curieux·se', true],
+    ['💡','Idéateur·rice', ideas.length>0],
+    ['💬','Contributeur·rice', com.length>=3],
+    ['🙋','Volontaire', ints.some(i=>i.wants_to_test)],
+    ['🧪','Testeur·se', mems.length>0],
+    ['✍️','Prompteur·se', prs.length>0],
+    ['📊','Évaluateur·rice', exps.some(e=>['en_evaluation','validee','partagee'].includes(e.status))],
+    ['🧭','Référent·e', exps.some(e=>['validee','partagee'].includes(e.status))],
+    ['🌐','Passeur·se', [...ideas,...prs,...exps].some(x=>x.network_status==='approuve')]
+  ];
+}
+function passport(p){ return `<div class="pass">${p.map(([i,l,g]) => `<div class="stamp ${g?'got':''}" title="${g?'Obtenu':'À obtenir'}"><i>${i}</i>${l}</div>`).join('')}</div>`; }
+async function pageHome(){
+  const [ideas, exps, chs, logs, pp] = await Promise.all([
+    api.list('ideas'), api.list('experiments'), api.list('challenges',{eq:{org_id:S.org,active:true},limit:1}),
+    api.list('experiment_logs',{limit:4}), passportData()
+  ]);
+  const mine = ideas.filter(i => i.author_id===S.user.id);
+  const ch = chs[0];
+  const first = (S.profile?.full_name||'').split(' ')[0];
+  const expMap = Object.fromEntries(exps.map(e=>[e.id,e]));
+  return `<div class="wrap page">
+    <section class="card welcome" style="background:linear-gradient(120deg,var(--navy),var(--navy-2));color:#fff;border:0;padding:32px;display:grid;grid-template-columns:1fr auto;gap:24px;align-items:center">
+      <div><span class="eyebrow" style="color:oklch(0.85 0.06 190)">${esc(orgName(S.org))} · ${esc(ROLES[S.role])}</span>
+        <h1 style="color:#fff;font-size:clamp(1.7rem,4vw,2.5rem)">Bonjour ${esc(first || '')} 👋</h1>
+        <p style="color:oklch(1 0 0 / .82);margin:0">Quelle tâche vous a fait perdre du temps cette semaine ?</p>
+        <div class="cta"><a class="btn btn-accent" href="#/idees/nouvelle">💡 J'ai une idée</a><a class="btn btn-ghost" href="#/idees/nouvelle" data-act="needInspire">Je ne sais pas quoi proposer</a></div></div>
+      <div style="width:150px" class="hide-sm" aria-hidden="true">${logo(150)}</div>
+    </section>
+
+    <div class="grid g3" style="margin-top:22px">
+      <div class="card"><h3>🎯 Défi du moment</h3>${ch ? `<p><b>${esc(ch.title)}</b><br>${esc(ch.question)}</p><p class="meta">${ch.ends_on?'Jusqu\'au '+fmtDate(ch.ends_on):''} ${demoBadge(ch)}</p><a class="btn btn-soft sm" href="#/idees/nouvelle" data-act="challengeIdea" data-q="${esc(ch.question)}">Proposer une solution</a>` : `<p class="muted">Aucun défi en cours.</p>${isMod()?'<a class="btn btn-ghost sm" href="#/communaute">Lancer un défi</a>':''}`}</div>
+      <div class="card"><h3>💡 Mes idées</h3>${mine.length ? `<ul style="list-style:none;padding:0;margin:0">${mine.slice(0,5).map(i => `<li style="padding:8px 0;border-bottom:1px solid var(--line)"><a href="#/idees/${i.id}" style="text-decoration:none;color:var(--ink);font-weight:500">${esc(i.title)}</a><br>${badge(IDEA_ST[i.status][0],IDEA_ST[i.status][1])}</li>`).join('')}</ul>` : `<p class="muted">Vous n'avez pas encore proposé d'idée. La première prend deux minutes.</p>`}</div>
+      <div class="card"><h3>🎫 Mon passeport IA</h3><p class="small muted">Votre progression personnelle. Jamais de classement.</p>${passport(pp)}</div>
+    </div>
+
+    <div class="page-head" style="margin-top:40px"><div><span class="eyebrow">Atelier</span><h2 style="margin:0">Expérimentations à découvrir</h2></div><a class="btn btn-ghost sm" href="#/experiences">Tout voir</a></div>
+    ${exps.length ? `<div class="grid g3">${exps.slice(0,3).map(expCard).join('')}</div>` : empty('Aucune expérimentation pour le moment.')}
+
+    <div class="grid g2" style="margin-top:40px">
+      <div><div class="page-head"><h2 style="margin:0">Dernières idées</h2><a class="btn btn-ghost sm" href="#/idees">Tout voir</a></div>
+        ${ideas.length ? `<div class="grid">${ideas.slice(0,3).map(i=>ideaCard(i)).join('')}</div>` : empty('Aucune idée pour le moment.')}</div>
+      <div><div class="page-head"><h2 style="margin:0">Retours d'expérience</h2></div>
+        <div class="card">${logs.length ? logs.map(l => `<div class="comment" style="border:0;padding:8px 0"><div class="avatar">${esc(initials(who(l)))}</div><div><div>${badge(LOG_K[l.kind][0],LOG_K[l.kind][1]+' log-k')} <a class="small" href="#/experiences/${l.experiment_id}">${esc(expMap[l.experiment_id]?.name||'Expérimentation')}</a></div><div class="small">${esc(l.body)}</div></div></div>`).join('') : '<p class="muted">Les observations des testeurs apparaîtront ici.</p>'}</div></div>
+    </div>
+    <div style="margin-top:40px">${pillars()}</div>
+  </div>`;
+}
+
+/* ================= Idées ================= */
+async function pageIdeas(){
+  CUR.ideas = await api.list('ideas');
+  const f = F.ideas;
+  CUR.after = renderIdeaList;
+  return `<div class="wrap page">
+    <div class="page-head"><div><span class="eyebrow">Boîte à idées</span><h1 style="font-size:2.2rem;margin:0">Les idées du terrain</h1><p>Problématiques, pistes d'amélioration, besoins : tout commence ici.</p></div>
+      <a class="btn btn-accent" href="#/idees/nouvelle">💡 J'ai une idée</a></div>
+    <div class="toolbar" role="search">
+      <input type="search" placeholder="Rechercher une idée…" aria-label="Rechercher" data-filter="ideas.q" value="${esc(f.q||'')}">
+      <select aria-label="Statut" data-filter="ideas.status"><option value="">Tous les statuts</option>${opts(IDEA_ST, f.status)}</select>
+      <select aria-label="Métier" data-filter="ideas.job">${jobOpts(f.job,'Tous les métiers')}</select>
+      <select aria-label="Périmètre" data-filter="ideas.scope"><option value="">Mon SPSTI + réseau</option><option value="mine" ${f.scope==='mine'?'selected':''}>Mes idées</option><option value="org" ${f.scope==='org'?'selected':''}>Mon SPSTI</option><option value="net" ${f.scope==='net'?'selected':''}>Partagées par le réseau</option></select>
+    </div>
+    <div id="list"></div></div>`;
+}
+function renderIdeaList(){
+  const f = F.ideas, q = (f.q||'').toLowerCase();
+  const r = CUR.ideas.filter(i => (!f.status || i.status===f.status) && (!f.job || i.job===f.job)
+    && (!q || (i.title+' '+i.problem).toLowerCase().includes(q))
+    && (!f.scope || (f.scope==='mine' && i.author_id===S.user.id) || (f.scope==='org' && i.org_id===S.org) || (f.scope==='net' && i.org_id!==S.org)));
+  $('#list').innerHTML = r.length ? `<p class="meta">${r.length} idée${r.length>1?'s':''}</p><div class="grid g3">${r.map(i=>ideaCard(i)).join('')}</div>`
+    : empty('Aucune idée ne correspond à ces critères.', '<a class="btn btn-accent" href="#/idees/nouvelle">Proposer la première</a>');
+}
+function dataLevelField(cur='vert'){
+  return `<div class="field"><label>Quel type d'information contient votre idée ? <span class="hint">Le feu tricolore des données</span></label>
+    <div class="choice c3">
+      <label><input type="radio" name="data_level" value="vert" ${cur==='vert'?'checked':''}><span><b>🟢 Fictif ou public</b><span class="small muted">Aucune information interne sensible</span></span></label>
+      <label><input type="radio" name="data_level" value="orange" ${cur==='orange'?'checked':''}><span><b>🟠 Interne non nominatif</b><span class="small muted">Organisation, chiffres agrégés</span></span></label>
+      <label><input type="radio" name="data_level" value="rouge"><span><b>🔴 Santé ou nominatif</b><span class="small muted">Noms, données médicales…</span></span></label>
+    </div>
+    <div class="stop" role="alert"><b>Stop : ces informations ne doivent pas être saisies ici.</b><br>Reformulez sans nom, sans donnée de santé ni document confidentiel. Décrivez le <i>problème</i>, pas le cas individuel.</div></div>`;
+}
+function visField(cur='spsti', canReseau=true){
+  return `<div class="field"><label>Qui peut voir ce contenu ?</label><div class="choice c3">
+    <label><input type="radio" name="visibility" value="prive" ${cur==='prive'?'checked':''}><span><b>🔒 Privé</b><span class="small muted">Vous et les animateurs du pilote</span></span></label>
+    <label><input type="radio" name="visibility" value="spsti" ${cur==='spsti'?'checked':''}><span><b>🏢 Mon SPSTI</b><span class="small muted">Les membres de votre service</span></span></label>
+    ${canReseau ? `<label><input type="radio" name="visibility" value="reseau" ${cur==='reseau'?'checked':''}><span><b>🌐 Réseau</b><span class="small muted">Autres SPSTI, après validation d'un administrateur</span></span></label>` : ''}
+  </div></div>`;
+}
+async function pageIdeaForm(id){
+  let it = { title:'', problem:'', job:S.profile?.job||'', frequency:null, impact:null, solution:'', data_level:'vert', visibility:'spsti' };
+  if (id) { const x = await api.get('ideas', id); if (!x) throw new Error('Idée introuvable'); it = x; }
+  const pre = CUR.prefill; CUR.prefill = null;
+  if (pre) Object.assign(it, pre);
+  const showInsp = CUR.inspire; CUR.inspire = false;
+  return `<div class="wrap page" style="max-width:820px">
+    <a href="${id?'#/idees/'+id:'#/idees'}" class="small">← Retour</a>
+    <h1 style="font-size:2.2rem;margin-top:10px">${id?'Modifier mon idée':'Partager une idée'}</h1>
+    <p class="muted">Pas besoin de connaître l'IA. Décrivez simplement ce qui vous fait perdre du temps ou ce qui pourrait être plus simple.</p>
+    <details class="card flat" style="margin-bottom:22px" ${showInsp?'open':''}><summary style="cursor:pointer;font-weight:600;color:var(--navy)">✨ En panne d'inspiration ? Exemples de problématiques fréquentes</summary>
+      <div class="chips" style="margin-top:14px">${INSPIRE.map(([t,p],k) => `<button type="button" class="btn btn-ghost sm" data-act="inspire" data-k="${k}">${esc(t)}</button>`).join('')}</div></details>
+    <form data-form="idea" data-id="${id||''}" class="card">
+      <div class="field"><label for="f-title">Titre de l'idée</label><input id="f-title" type="text" name="title" required minlength="3" maxlength="140" value="${esc(it.title)}" placeholder="Ex. Préparer plus vite les comptes rendus de visite"></div>
+      <div class="field"><label for="f-pb">Quel problème rencontrez-vous ? <span class="hint">Quelle tâche vous fait perdre du temps ? Qu'est-ce qui pourrait être plus simple ?</span></label><textarea id="f-pb" name="problem" required minlength="10" maxlength="4000">${esc(it.problem)}</textarea></div>
+      <div class="row2">
+        <div class="field"><label for="f-job">Métier concerné</label><select id="f-job" name="job">${jobOpts(it.job)}</select></div>
+        <div class="field"><label>À quelle fréquence ?</label><div class="chips">${Object.entries(FREQ).map(([k,v]) => `<label class="chip-radio" style="margin:0;font-weight:400"><input type="radio" name="frequency" value="${k}" ${it.frequency===k?'checked':''}><span>${v}</span></label>`).join('')}</div></div>
+      </div>
+      <div class="field"><label>Impact estimé sur votre quotidien</label><div class="chips">${Object.entries(IMPACT).map(([k,v]) => `<label class="chip-radio" style="margin:0;font-weight:400"><input type="radio" name="impact" value="${k}" ${it.impact===k?'checked':''}><span>${v}</span></label>`).join('')}</div></div>
+      <div class="field"><label for="f-sol">Une solution imaginée ? <span class="hint">Facultatif</span></label><textarea id="f-sol" name="solution" maxlength="4000" style="min-height:80px">${esc(it.solution)}</textarea></div>
+      ${dataLevelField(it.data_level)}
+      ${visField(it.visibility)}
+      <div style="display:flex;gap:10px;justify-content:flex-end"><a class="btn btn-ghost" href="${id?'#/idees/'+id:'#/idees'}">Annuler</a><button class="btn btn-accent" type="submit">${id?'Enregistrer':'Publier mon idée'}</button></div>
+    </form></div>`;
+}
+async function pageIdea(id){
+  const it = await api.get('ideas', id);
+  if (!it) return `<div class="wrap page">${empty('Cette idée n\'existe pas ou ne vous est pas accessible.','<a class="btn btn-ghost" href="#/idees">Retour aux idées</a>')}</div>`;
+  const [coms, ints, exps] = await Promise.all([
+    api.list('idea_comments',{eq:{idea_id:id},asc:true}), api.list('idea_interests',{eq:{idea_id:id},order:null}), api.list('experiments',{eq:{idea_id:id}})
+  ]);
+  const mine = ints.find(x => x.user_id===S.user.id);
+  CUR.idea = it; CUR.myInterest = mine;
+  const own = it.author_id===S.user.id, sameOrg = it.org_id===S.org;
+  const testers = ints.filter(x => x.wants_to_test);
+  const st = IDEA_ST[it.status];
+  return `<div class="wrap page"><a href="#/idees" class="small">← Toutes les idées</a>
+  <div class="layout" style="margin-top:12px">
+    <div>
+      <div class="badges">${badge(st[0],st[1])}${dataBadge(it.data_level)}${visBadge(it)}${demoBadge(it)}${fromOther(it)}</div>
+      <h1 style="font-size:2.1rem">${esc(it.title)}</h1>
+      <div class="card" style="margin-bottom:20px">${cycle(IDEA_STEP[it.status])}</div>
+      ${it.status==='non_retenue' ? `<div class="note warn" style="margin-bottom:18px">Idée non retenue pour le moment.${it.status_note?' '+esc(it.status_note):''}</div>` : it.status_note ? `<div class="note" style="margin-bottom:18px"><b>Note de l'animateur :</b> ${esc(it.status_note)}</div>` : ''}
+      <div class="card">
+        <div class="sec"><h3>Le problème</h3><div class="txt">${nl(it.problem)}</div></div>
+        ${it.solution ? `<div class="sec"><h3>Solution imaginée</h3><div class="txt">${nl(it.solution)}</div></div>` : ''}
+        ${exps.length ? `<div class="sec"><h3>Expérimentations liées</h3>${exps.map(e=>`<a href="#/experiences/${e.id}">🧪 ${esc(e.name)}</a> ${badge(EXP_ST[e.status][0],EXP_ST[e.status][1])}`).join('<br>')}</div>` : ''}
+      </div>
+      <h2 style="margin-top:32px;font-size:1.4rem">Échanges (${coms.length})</h2>
+      <div class="card">
+        ${coms.map(c => `<div class="comment"><div class="avatar">${esc(initials(who(c)))}</div><div style="flex:1"><div class="who">${esc(who(c))} <span class="meta">· ${fmtDate(c.created_at)}</span></div><div>${nl(c.body)}</div>${c.author_id===S.user.id?`<button class="btn btn-ghost sm" style="margin-top:6px" data-act="delComment" data-t="idea_comments" data-id="${c.id}">Supprimer</button>`:''}</div></div>`).join('') || '<p class="muted">Pas encore d\'échange. Une question, une suggestion, une expérience similaire ?</p>'}
+        <form data-form="comment" data-t="idea_comments" data-k="idea_id" data-id="${id}" style="margin-top:14px"><label class="sr" for="cm">Votre commentaire</label><textarea id="cm" name="body" required maxlength="2000" placeholder="Votre question, suggestion ou retour… (🟢 sans donnée nominative)" style="min-height:80px"></textarea><div style="text-align:right;margin-top:8px"><button class="btn btn-primary sm" type="submit">Publier</button></div></form>
+      </div>
+    </div>
+    <aside class="grid">
+      <div class="card"><dl class="kv">
+        <dt>Métier</dt><dd>${esc(it.job||'—')}</dd><dt>Fréquence</dt><dd>${FREQ[it.frequency]||'—'}</dd>
+        <dt>Impact</dt><dd>${IMPACT[it.impact]||'—'}</dd><dt>Proposée par</dt><dd>${esc(who(it))}</dd><dt>Le</dt><dd>${fmtDate(it.created_at)}</dd></dl></div>
+      <div class="card"><h3>Votre intérêt</h3>
+        <div class="grid" style="gap:8px">
+          <button class="btn btn-ghost ${mine?'on':''}" data-act="interest" data-test="0" aria-pressed="${!!mine}">👍 Ça m'intéresse · ${ints.length}</button>
+          <button class="btn btn-ghost ${mine?.wants_to_test?'on':''}" data-act="interest" data-test="1" aria-pressed="${!!mine?.wants_to_test}">🙋 Je veux tester · ${testers.length}</button>
+        </div>
+        <p class="small muted" style="margin-top:10px">L'intérêt aide à prioriser, mais une idée n'est jamais validée par la popularité seule.</p>
+        ${sameOrg && testers.length ? `<p class="small"><b>Volontaires :</b> ${testers.map(t=>esc(S.profiles[t.user_id]?.full_name||'Membre')).join(', ')}</p>` : ''}
+      </div>
+      ${sameOrg && isMod() ? `<div class="card"><h3>🧭 Animation</h3>
+        <form data-form="ideaStatus" data-id="${id}"><div class="field"><label for="st">Statut</label><select id="st" name="status">${opts(IDEA_ST,it.status)}</select></div>
+        <div class="field"><label for="sn">Note visible par tous <span class="hint">Pourquoi ce statut ?</span></label><textarea id="sn" name="status_note" style="min-height:70px">${esc(it.status_note)}</textarea></div>
+        <button class="btn btn-primary sm" type="submit">Mettre à jour</button></form>
+        ${canExp() ? `<a class="btn btn-soft sm" style="margin-top:10px;width:100%" href="#/experiences/nouvelle/${id}">🧪 Lancer une expérimentation</a>` : ''}</div>` : ''}
+      ${sameOrg && isAdmin() && it.network_status==='en_attente' ? modCard('ideas', id) : ''}
+      ${sameOrg && (own || isAdmin()) ? `<div class="card"><h3>Gérer</h3><div class="chips">${own?`<a class="btn btn-ghost sm" href="#/idee-modifier/${id}">Modifier</a>`:''}${(own && it.status==='nouvelle') || isAdmin() ? `<button class="btn btn-danger sm" data-act="delItem" data-t="ideas" data-id="${id}" data-back="#/idees">Supprimer</button>`:''}</div></div>` : ''}
+    </aside></div></div>`;
+}
+function modCard(t, id){
+  return `<div class="card" style="border-color:var(--orange)"><h3>🌐 Partage réseau à valider</h3><p class="small muted">Vérifiez l'absence de donnée nominative ou sensible et l'intérêt pour d'autres SPSTI.</p>
+  <div class="chips"><button class="btn btn-primary sm" data-act="netMod" data-t="${t}" data-id="${id}" data-v="approuve">Valider le partage</button><button class="btn btn-danger sm" data-act="netMod" data-t="${t}" data-id="${id}" data-v="refuse">Refuser</button></div></div>`;
+}
+
+/* ================= Expérimentations ================= */
+async function pageExps(){
+  CUR.exps = await api.list('experiments');
+  CUR.after = renderExpList;
+  const f = F.exps;
+  return `<div class="wrap page">
+    <div class="page-head"><div><span class="eyebrow">Atelier d'expérimentation</span><h1 style="font-size:2.2rem;margin:0">Expérimentations</h1><p>Hypothèse, protocole, résultats, décision : chaque test est documenté.</p></div>
+      ${canExp() ? '<a class="btn btn-primary" href="#/experiences/nouvelle">🧪 Nouvelle expérimentation</a>' : ''}</div>
+    <div class="toolbar" role="search">
+      <input type="search" placeholder="Rechercher…" aria-label="Rechercher" data-filter="exps.q" value="${esc(f.q||'')}">
+      <select aria-label="Statut" data-filter="exps.status"><option value="">Tous les statuts</option>${opts(EXP_ST,f.status)}</select>
+      <select aria-label="Périmètre" data-filter="exps.scope"><option value="">Mon SPSTI + réseau</option><option value="org" ${f.scope==='org'?'selected':''}>Mon SPSTI</option><option value="net" ${f.scope==='net'?'selected':''}>Partagées par le réseau</option></select>
+    </div><div id="list"></div></div>`;
+}
+function renderExpList(){
+  const f = F.exps, q = (f.q||'').toLowerCase();
+  const r = CUR.exps.filter(e => (!f.status || e.status===f.status) && (!q || (e.name+' '+e.problem).toLowerCase().includes(q))
+    && (!f.scope || (f.scope==='org' && e.org_id===S.org) || (f.scope==='net' && e.org_id!==S.org)));
+  $('#list').innerHTML = r.length ? `<div class="grid g3">${r.map(expCard).join('')}</div>` : empty('Aucune expérimentation ne correspond.', canExp() ? '<a class="btn btn-primary" href="#/experiences/nouvelle">Lancer la première</a>' : '<a class="btn btn-ghost" href="#/idees">Voir les idées</a>');
+}
+const EXP_FIELDS = [
+  ['problem','Problème métier',"Quelle problématique concrète ?",true],
+  ['objective','Objectif recherché','Ex. réduire le temps de rédaction sans perte de qualité'],
+  ['audience','Public concerné','Ex. IPRP et infirmiers du groupe pilote'],
+  ['hypothesis','Hypothèse à tester','Ex. un prompt structuré réduit de 30 % le temps de mise en forme'],
+  ['solution','Solution ou outil utilisé','Ex. prompt « Trame FE » + relecture humaine'],
+  ['conditions',"Conditions d'utilisation autorisées",'Niveau de données, outil autorisé, relecture obligatoire…'],
+  ['protocol','Protocole de test','Qui teste, combien de cas, comment on mesure (avant / après)'],
+  ['results','Résultats observés','À compléter pendant ou après le test'],
+  ['limits','Limites et risques identifiés','Erreurs, biais, dérives d\'usage, données…'],
+  ['decision','Décision finale','Généraliser, adapter, arrêter… et pourquoi']
+];
+async function pageExpForm(id, ideaId){
+  let e = { name:'', data_level:'vert', visibility:'spsti' };
+  if (id) { const x = await api.get('experiments', id); if (!x) throw new Error('Expérimentation introuvable'); e = x; }
+  else if (ideaId) { const i = await api.get('ideas', ideaId); if (i) Object.assign(e, { name:i.title, problem:i.problem, solution:i.solution, idea_id:i.id, audience:i.job }); }
+  if (!id && !canExp()) return `<div class="wrap page">${empty('Seuls les expérimentateurs et animateurs peuvent lancer une expérimentation. Rejoignez un test depuis une idée !','<a class="btn btn-ghost" href="#/idees">Voir les idées</a>')}</div>`;
+  return `<div class="wrap page" style="max-width:900px"><a href="${id?'#/experiences/'+id:'#/experiences'}" class="small">← Retour</a>
+    <h1 style="font-size:2.2rem;margin-top:10px">${id?'Modifier la fiche':'Nouvelle expérimentation'}</h1>
+    <p class="muted">Une fiche en 12 points. Inutile de tout remplir dès le départ : résultats, limites et décision se complètent au fil du test.</p>
+    <form data-form="exp" data-id="${id||''}" class="card">
+      <input type="hidden" name="idea_id" value="${esc(e.idea_id||'')}">
+      <div class="field"><label for="x-name"><span style="display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--navy);color:#fff;font-size:.72rem;margin-right:6px">1</span>Nom du projet</label><input id="x-name" type="text" name="name" required minlength="3" maxlength="140" value="${esc(e.name)}"></div>
+      ${EXP_FIELDS.map(([k,l,h,req],n) => `<div class="field"><label for="x-${k}"><span class="num" style="display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--navy);color:#fff;font-size:.72rem;margin-right:6px">${n<7?n+2:n+3}</span>${l} <span class="hint">${esc(h)}</span></label><textarea id="x-${k}" name="${k}" ${req?'required':''} style="min-height:76px">${esc(e[k])}</textarea></div>`).join('')}
+      ${id ? `<h3 style="margin-top:10px">📏 Mesure des résultats</h3>
+      <div class="row2"><div class="field"><label for="x-te">Gain de temps estimé <span class="hint">minutes / semaine / utilisateur</span></label><input id="x-te" type="number" min="0" name="time_est_min" value="${e.time_est_min??''}"></div>
+        <div class="field"><label for="x-tm">Gain de temps mesuré <span class="hint">laisser vide si non mesuré</span></label><input id="x-tm" type="number" min="0" name="time_measured_min" value="${e.time_measured_min??''}"></div></div>
+      <div class="row2"><div class="field"><label for="x-mt">Méthode de mesure</label><input id="x-mt" type="text" name="time_method" value="${esc(e.time_method)}" placeholder="Chronométrage avant/après sur N cas…"></div>
+        <div class="field"><label for="x-sat">Satisfaction des testeurs (1 à 5)</label><input id="x-sat" type="number" min="1" max="5" name="satisfaction" value="${e.satisfaction??''}"></div></div>` : ''}
+      ${dataLevelField(e.data_level)}${visField(e.visibility)}
+      <div style="display:flex;gap:10px;justify-content:flex-end"><a class="btn btn-ghost" href="${id?'#/experiences/'+id:'#/experiences'}">Annuler</a><button class="btn btn-primary" type="submit">${id?'Enregistrer':'Créer la fiche'}</button></div>
+    </form></div>`;
+}
+async function pageExp(id){
+  const e = await api.get('experiments', id);
+  if (!e) return `<div class="wrap page">${empty('Cette expérimentation n\'existe pas ou ne vous est pas accessible.','<a class="btn btn-ghost" href="#/experiences">Retour</a>')}</div>`;
+  const [mem, logs, idea] = await Promise.all([
+    api.list('experiment_members',{eq:{experiment_id:id},order:null}), api.list('experiment_logs',{eq:{experiment_id:id},asc:true}), e.idea_id ? api.get('ideas', e.idea_id) : null
+  ]);
+  const sameOrg = e.org_id===S.org, owner = e.author_id===S.user.id, inside = mem.some(m => m.user_id===S.user.id);
+  const canLog = sameOrg && (owner || isMod() || inside);
+  const st = EXP_ST[e.status];
+  const allowed = isMod() ? Object.keys(EXP_ST) : owner ? [e.status,'en_test','en_evaluation','suspendue'] : [];
+  const fiche = [['name','Nom du projet'], ...EXP_FIELDS.slice(0,7).map(([k,l])=>[k,l])];
+  const after = EXP_FIELDS.slice(7).map(([k,l])=>[k,l]);
+  const sec = ([k,l], n) => `<div class="sec"><h3><span class="num">${n}</span>${esc(l)}</h3><div class="txt">${e[k] ? nl(e[k]) : '<span class="empty-v">À compléter</span>'}</div></div>`;
+  return `<div class="wrap page"><a href="#/experiences" class="small">← Toutes les expérimentations</a>
+  <div class="layout" style="margin-top:12px"><div>
+    <div class="badges">${badge(st[0],st[1])}${dataBadge(e.data_level)}${visBadge(e)}${demoBadge(e)}${fromOther(e)}</div>
+    <h1 style="font-size:2.1rem">${esc(e.name)}</h1>
+    ${idea ? `<p class="small">Issue de l'idée : <a href="#/idees/${idea.id}">${esc(idea.title)}</a></p>` : ''}
+    <div class="card" style="margin-bottom:20px">${cycle(EXP_STEP[e.status])}</div>
+    ${e.status==='suspendue' ? '<div class="note warn" style="margin-bottom:18px">Expérimentation suspendue ou abandonnée. Arrêter un test qui ne donne pas satisfaction est une bonne décision.</div>' : ''}
+    <div class="card"><h2 style="font-size:1.3rem">Fiche projet</h2><div class="fiche">${fiche.map((f,n)=>sec(f,n+1)).join('')}
+      <div class="sec"><h3><span class="num">9</span>Participants</h3><div class="txt">${mem.length ? mem.map(m => esc(sameOrg ? (S.profiles[m.user_id]?.full_name||'Membre') : 'Testeur')).join(', ') : '<span class="empty-v">Aucun participant</span>'}</div></div>
+      ${after.map((f,n)=>sec(f,n+10)).join('')}</div></div>
+
+    <div class="card" style="margin-top:20px"><h2 style="font-size:1.3rem">📏 Indicateurs</h2>
+      <div class="grid g4">
+        <div class="kpi"><div class="v">${e.time_est_min ?? '—'}</div><div class="l">min / sem. estimées</div><div class="s">${badge('Estimation','b-gray')}</div></div>
+        <div class="kpi"><div class="v">${e.time_measured_min ?? '—'}</div><div class="l">min / sem. mesurées</div><div class="s">${badge('Mesure','b-teal')}</div></div>
+        <div class="kpi"><div class="v">${e.satisfaction ? e.satisfaction+'/5' : '—'}</div><div class="l">satisfaction testeurs</div></div>
+        <div class="kpi"><div class="v">${logs.filter(l=>l.kind==='risque').length}</div><div class="l">risques signalés</div></div>
+      </div>${e.time_method ? `<p class="small muted" style="margin-top:12px"><b>Méthode :</b> ${esc(e.time_method)}</p>` : ''}</div>
+
+    <h2 style="margin-top:32px;font-size:1.4rem">Journal de l'expérimentation</h2>
+    <div class="card">
+      ${logs.map(l => `<div class="comment"><div class="avatar">${esc(initials(who(l)))}</div><div style="flex:1"><div class="who">${esc(who(l))} ${badge(LOG_K[l.kind][0],LOG_K[l.kind][1])} <span class="meta">· ${fmtDate(l.created_at)}</span></div><div>${nl(l.body)}</div></div></div>`).join('') || '<p class="muted">Aucune observation pour le moment.</p>'}
+      ${canLog ? `<form data-form="log" data-id="${id}" style="margin-top:14px"><div class="row2 logrow"><select name="kind" aria-label="Type">${opts(LOG_K,'observation')}</select><textarea name="body" required maxlength="3000" placeholder="Ce que vous avez observé… (🟢 sans donnée nominative)" style="min-height:70px" aria-label="Observation"></textarea></div><div style="text-align:right;margin-top:8px"><button class="btn btn-primary sm" type="submit">Ajouter au journal</button></div></form>` : sameOrg ? '<p class="small muted">Rejoignez les testeurs pour contribuer au journal.</p>' : ''}
+    </div>
+  </div>
+  <aside class="grid">
+    ${sameOrg ? `<div class="card"><h3>Participer</h3>${inside ? `<p class="small">✅ Vous faites partie des testeurs.</p><button class="btn btn-ghost sm" data-act="leaveExp" data-id="${id}">Quitter le test</button>` : ['selectionnee','en_test','a_etudier'].includes(e.status) ? `<button class="btn btn-accent" style="width:100%" data-act="joinExp" data-id="${id}">🙋 Rejoindre les testeurs</button>` : '<p class="small muted">Les inscriptions sont fermées.</p>'}</div>` : `<div class="card"><h3>🌐 Partagé par ${esc(orgName(e.org_id))}</h3><p class="small muted">Vous pouvez vous en inspirer et lancer un test adapté dans votre SPSTI.</p></div>`}
+    ${sameOrg && allowed.length ? `<div class="card"><h3>Statut</h3><form data-form="expStatus" data-id="${id}"><select name="status" aria-label="Statut">${Object.entries(EXP_ST).filter(([k])=>allowed.includes(k)).map(([k,v])=>`<option value="${k}" ${k===e.status?'selected':''}>${v[0]}</option>`).join('')}</select>
+      <button class="btn btn-primary sm" style="margin-top:10px" type="submit">Mettre à jour</button></form>
+      <p class="small muted" style="margin-top:10px">« Validée » et « Partagée » exigent des résultats et une décision documentés.${!isMod()?' Ces statuts sont réservés aux animateurs.':''}</p></div>` : ''}
+    ${sameOrg && (owner || isMod()) ? `<a class="btn btn-ghost" href="#/experience-modifier/${id}">✏️ Compléter la fiche</a>` : ''}
+    ${sameOrg && isAdmin() && e.network_status==='en_attente' ? modCard('experiments', id) : ''}
+    <div class="card flat"><p class="small muted" style="margin:0">🧑‍⚕️ Les résultats d'une expérimentation ne valent jamais validation médicale, juridique ou réglementaire. Toute décision reste humaine.</p></div>
+  </aside></div></div>`;
+}
+
+/* ================= Boîte à outils : prompts & outils ================= */
+async function pageToolbox(tab){
+  const tabs = `<div class="tabs" role="tablist"><a href="#/outils/prompts" role="tab" ${tab==='prompts'?'aria-current="page"':''}>✍️ Prompts & méthodes</a><a href="#/outils/catalogue" role="tab" ${tab!=='prompts'?'aria-current="page"':''}>🧰 Outils IA</a></div>`;
+  const head = `<div class="page-head"><div><span class="eyebrow">Boîte à outils IA</span><h1 style="font-size:2.2rem;margin:0">Réutiliser ce qui marche</h1><p>Prompts éprouvés, méthodes et outils, avec leurs conditions d'usage.</p></div>
+    ${tab==='prompts' ? '<a class="btn btn-primary" href="#/prompt-nouveau">✍️ Partager un prompt</a>' : isMod() ? '<a class="btn btn-primary" href="#/outil-nouveau">➕ Référencer un outil</a>' : ''}</div>`;
+  if (tab==='prompts') {
+    CUR.prompts = await api.list('prompts');
+    CUR.after = renderPromptList;
+    const f = F.prompts;
+    const themes = [...new Set(CUR.prompts.map(p=>p.theme).filter(Boolean))];
+    return `<div class="wrap page">${head}${tabs}
+      <div class="toolbar" role="search"><input type="search" placeholder="Rechercher un prompt…" aria-label="Rechercher" data-filter="prompts.q" value="${esc(f.q||'')}">
+        <select aria-label="Métier" data-filter="prompts.job">${jobOpts(f.job,'Tous les métiers')}</select>
+        <select aria-label="Thème" data-filter="prompts.theme"><option value="">Tous les thèmes</option>${themes.map(t=>`<option ${t===f.theme?'selected':''}>${esc(t)}</option>`).join('')}</select></div>
+      <div id="list"></div></div>`;
+  }
+  const tools = await api.list('tools');
+  CUR.tools = tools;
+  return `<div class="wrap page">${head}${tabs}
+    <div class="grid g4" style="margin-bottom:24px">${Object.entries(MATURITY).map(([k,[l,d,c]]) => `<div class="card flat" style="padding:16px">${badge(l,c)}<p class="small muted" style="margin:8px 0 0">${d}</p></div>`).join('')}</div>
+    ${tools.length ? `<div class="grid g3">${tools.map(t => `<button class="card item" style="text-align:left;font:inherit;cursor:pointer" data-act="toolDetail" data-id="${t.id}">
+      <div class="badges">${badge(MATURITY[t.maturity][0],MATURITY[t.maturity][2])}${demoBadge(t)}${fromOther(t)}</div><h3>${esc(t.name)}</h3><p>${esc(t.purpose||'')}</p>
+      <div class="meta">${esc(t.category||'')} · ${esc(t.job||'Tous métiers')}</div><span class="more">Fiche outil →</span></button>`).join('')}</div>`
+      : empty('Aucun outil référencé.')}
+    <div class="note warn" style="margin-top:24px">Aucun outil n'est réputé conforme du seul fait d'être listé ici. Avant tout usage d'un service IA externe : conditions contractuelles, lieu de traitement, conservation et réutilisation des données sont vérifiées avec le DPO et la DSI.</div></div>`;
+}
+function renderPromptList(){
+  const f = F.prompts, q = (f.q||'').toLowerCase();
+  const r = CUR.prompts.filter(p => (!f.job || p.job===f.job) && (!f.theme || p.theme===f.theme) && (!q || (p.title+' '+(p.description||'')+' '+p.content).toLowerCase().includes(q)));
+  $('#list').innerHTML = r.length ? `<div class="grid g3">${r.map(p => `<div class="card item">
+    <div class="badges">${dataBadge(p.data_level)}${p.theme?badge(esc(p.theme),'b-gray'):''}${demoBadge(p)}${fromOther(p)}</div>
+    <h3><a href="#/prompt/${p.id}" style="text-decoration:none;color:inherit">${esc(p.title)}</a></h3><p>${esc(p.description||p.problem||'')}</p>
+    <div class="meta">${esc(p.job||'Tous métiers')} · vérifié le ${fmtDate(p.verified_at)}</div>
+    <div class="chips" style="margin-top:auto;padding-top:10px"><button class="btn btn-soft sm" data-act="copyPrompt" data-id="${p.id}">📋 Copier</button><a class="btn btn-ghost sm" href="#/prompt/${p.id}">Détails</a></div></div>`).join('')}</div>`
+    : empty('Aucun prompt ne correspond.', '<a class="btn btn-primary" href="#/prompt-nouveau">Partager le premier</a>');
+}
+async function pagePrompt(id){
+  const p = await api.get('prompts', id);
+  if (!p) return `<div class="wrap page">${empty('Prompt introuvable.','<a class="btn btn-ghost" href="#/outils">Retour</a>')}</div>`;
+  const coms = await api.list('prompt_comments',{eq:{prompt_id:id},asc:true});
+  CUR.prompt = p;
+  const own = p.author_id===S.user.id, sameOrg = p.org_id===S.org;
+  return `<div class="wrap page"><a href="#/outils/prompts" class="small">← Bibliothèque de prompts</a>
+  <div class="layout" style="margin-top:12px"><div>
+    <div class="badges">${dataBadge(p.data_level)}${visBadge(p)}${demoBadge(p)}${fromOther(p)}</div>
+    <h1 style="font-size:2.1rem">${esc(p.title)}</h1>
+    ${p.description ? `<p class="lead" style="font-size:1.05rem">${esc(p.description)}</p>` : ''}
+    <div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><h3 style="margin:0">Le prompt</h3><button class="btn btn-accent sm" data-act="copyPrompt" data-id="${id}">📋 Copier le prompt</button></div>
+      <pre class="prompt">${esc(p.content)}</pre>
+      ${p.problem?`<div class="sec" style="margin-top:20px"><h3>Problème résolu</h3><div class="txt">${nl(p.problem)}</div></div>`:''}
+      ${p.example?`<div class="sec"><h3>Exemple (données fictives)</h3><div class="txt">${nl(p.example)}</div></div>`:''}
+      ${p.limits?`<div class="sec"><h3>Limites identifiées</h3><div class="txt">${nl(p.limits)}</div></div>`:''}</div>
+    <h2 style="margin-top:32px;font-size:1.4rem">Retours d'expérience (${coms.length})</h2>
+    <div class="card">${coms.map(c => `<div class="comment"><div class="avatar">${esc(initials(who(c)))}</div><div style="flex:1"><div class="who">${esc(who(c))} <span class="meta">· ${fmtDate(c.created_at)}</span></div><div>${nl(c.body)}</div>${c.author_id===S.user.id?`<button class="btn btn-ghost sm" style="margin-top:6px" data-act="delComment" data-t="prompt_comments" data-id="${c.id}">Supprimer</button>`:''}</div></div>`).join('') || '<p class="muted">Vous l\'avez utilisé ? Dites ce qui a marché ou non.</p>'}
+      <form data-form="comment" data-t="prompt_comments" data-k="prompt_id" data-id="${id}" style="margin-top:14px"><textarea name="body" required maxlength="2000" aria-label="Votre retour" placeholder="Votre retour d'expérience…" style="min-height:80px"></textarea><div style="text-align:right;margin-top:8px"><button class="btn btn-primary sm" type="submit">Publier</button></div></form></div>
+  </div><aside class="grid">
+    <div class="card"><dl class="kv"><dt>Métier</dt><dd>${esc(p.job||'—')}</dd><dt>Thème</dt><dd>${esc(p.theme||'—')}</dd><dt>Type</dt><dd>${esc(p.task_type||'—')}</dd><dt>Auteur</dt><dd>${esc(who(p))}</dd><dt>Vérifié le</dt><dd>${fmtDate(p.verified_at)}</dd></dl></div>
+    ${sameOrg && (own || isMod()) ? `<div class="card"><h3>Gérer</h3><div class="chips"><button class="btn btn-soft sm" data-act="verifyPrompt" data-id="${id}">✓ Revérifié aujourd'hui</button><a class="btn btn-ghost sm" href="#/prompt-modifier/${id}">Modifier</a><button class="btn btn-danger sm" data-act="delItem" data-t="prompts" data-id="${id}" data-back="#/outils/prompts">Supprimer</button></div></div>` : ''}
+    ${sameOrg && isAdmin() && p.network_status==='en_attente' ? modCard('prompts', id) : ''}
+    <div class="note">Relisez toujours le résultat. Un prompt aide à rédiger, il ne remplace ni votre expertise ni la vérification des sources.</div>
+  </aside></div></div>`;
+}
+async function pagePromptForm(id){
+  let p = { title:'', job:S.profile?.job||'', data_level:'vert', visibility:'spsti' };
+  if (id) { const x = await api.get('prompts', id); if (!x) throw new Error('Prompt introuvable'); p = x; }
+  const F_ = [['title','Titre','text',true],['description','Description courte','text'],['problem','Problème résolu','area'],['content','Le prompt (avec [ZONES À COMPLÉTER])','area',true],['example','Exemple d\'utilisation avec données fictives','area'],['limits','Limites identifiées','area']];
+  return `<div class="wrap page" style="max-width:860px"><a href="${id?'#/prompt/'+id:'#/outils/prompts'}" class="small">← Retour</a>
+    <h1 style="font-size:2.2rem;margin-top:10px">${id?'Modifier le prompt':'Partager un prompt ou une méthode'}</h1>
+    <form data-form="prompt" data-id="${id||''}" class="card">
+      ${F_.map(([k,l,t,req]) => `<div class="field"><label for="p-${k}">${l}</label>${t==='text' ? `<input id="p-${k}" type="text" name="${k}" ${req?'required':''} maxlength="200" value="${esc(p[k])}">` : `<textarea id="p-${k}" name="${k}" ${req?'required minlength="10"':''} style="${k==='content'?'min-height:200px;font-family:ui-monospace,monospace':''}">${esc(p[k])}</textarea>`}</div>`).join('')}
+      <div class="row2"><div class="field"><label for="p-job">Métier</label><select id="p-job" name="job">${jobOpts(p.job)}</select></div>
+        <div class="field"><label for="p-th">Thème</label><input id="p-th" type="text" name="theme" list="themes" value="${esc(p.theme)}"><datalist id="themes"><option>Prévention</option><option>Communication</option><option>Organisation</option><option>Administratif</option><option>Formation</option><option>Veille</option></datalist></div></div>
+      <div class="field"><label for="p-tt">Type de tâche</label><input id="p-tt" type="text" name="task_type" list="tt" value="${esc(p.task_type)}"><datalist id="tt"><option>Rédaction</option><option>Synthèse</option><option>Structuration</option><option>Pédagogie</option><option>Recherche</option></datalist></div>
+      ${dataLevelField(p.data_level)}${visField(p.visibility)}
+      <div style="display:flex;gap:10px;justify-content:flex-end"><a class="btn btn-ghost" href="${id?'#/prompt/'+id:'#/outils/prompts'}">Annuler</a><button class="btn btn-primary" type="submit">${id?'Enregistrer':'Publier'}</button></div>
+    </form></div>`;
+}
+async function pageToolForm(id){
+  if (!isMod()) return `<div class="wrap page">${empty('Le référencement des outils est réservé aux animateurs.','<a class="btn btn-ghost" href="#/outils/catalogue">Retour</a>')}</div>`;
+  let t = { name:'', maturity:'reference', visibility:'spsti' };
+  if (id) { const x = await api.get('tools', id); if (!x) throw new Error('Outil introuvable'); t = x; }
+  const F_ = [['name','Nom de l\'outil','text',true],['category','Catégorie','text'],['purpose','Objectif','area'],['problem','Problème qu\'il aide à résoudre','area'],['access','Conditions d\'accès','text'],['allowed_data','🟢 Données autorisées','area'],['forbidden_data','🔴 Données interdites','area'],['limits','Limites connues','area'],['guide','Guide d\'utilisation','area'],['example','Exemple concret','area'],['referent','Référent de la ressource','text'],['url','Lien','text']];
+  return `<div class="wrap page" style="max-width:860px"><a href="#/outils/catalogue" class="small">← Retour</a><h1 style="font-size:2.2rem;margin-top:10px">${id?'Modifier l\'outil':'Référencer un outil'}</h1>
+    <form data-form="tool" data-id="${id||''}" class="card">
+      <div class="field"><label>Niveau de maturité</label><div class="choice">${Object.entries(MATURITY).map(([k,[l,d]])=>`<label><input type="radio" name="maturity" value="${k}" ${t.maturity===k?'checked':''}><span><b>${l}</b><span class="small muted">${d}</span></span></label>`).join('')}</div></div>
+      ${F_.map(([k,l,ty,req]) => `<div class="field"><label for="t-${k}">${l}</label>${ty==='text'?`<input id="t-${k}" type="text" name="${k}" ${req?'required':''} value="${esc(t[k])}">`:`<textarea id="t-${k}" name="${k}" style="min-height:70px">${esc(t[k])}</textarea>`}</div>`).join('')}
+      <div class="field"><label for="t-job">Métier</label><select id="t-job" name="job">${jobOpts(t.job)}</select></div>
+      ${visField(t.visibility)}
+      <div style="display:flex;gap:10px;justify-content:flex-end">${id?`<button type="button" class="btn btn-danger" data-act="delItem" data-t="tools" data-id="${id}" data-back="#/outils/catalogue">Supprimer</button>`:''}<button class="btn btn-primary" type="submit">Enregistrer</button></div>
+    </form></div>`;
+}
+
+/* ================= Communauté ================= */
+async function pageCommunity(){
+  const [mems, exps, chs] = await Promise.all([api.list('memberships',{eq:{org_id:S.org},asc:true}), api.list('experiments',{eq:{org_id:S.org}}), api.list('challenges',{eq:{org_id:S.org}})]);
+  const open = exps.filter(e => ['a_etudier','selectionnee','en_test'].includes(e.status));
+  const orgs = Object.values(S.orgs);
+  const GROUPS = [['🛡️','IA et prévention des risques'],['🩺','IA et santé au travail'],['🪑','IA et ergonomie'],['👥','IA et organisation des équipes'],['🗂️','IA et fonctions administratives'],['⚙️','Automatisation et outils métiers']];
+  return `<div class="wrap page">
+    <div class="page-head"><div><span class="eyebrow">Communauté</span><h1 style="font-size:2.2rem;margin:0">Apprendre ensemble</h1><p>Les volontaires, les défis et les SPSTI du réseau.</p></div></div>
+    <div class="grid g2">
+      <div class="card"><h3>🙋 Appels à volontaires</h3>${open.length ? open.map(e => `<div style="padding:10px 0;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:10px;align-items:center"><div><a href="#/experiences/${e.id}" style="font-weight:600;text-decoration:none">${esc(e.name)}</a><div class="meta">${esc(e.audience||'')}</div></div>${badge(EXP_ST[e.status][0],EXP_ST[e.status][1])}</div>`).join('') : '<p class="muted">Aucun appel en cours.</p>'}</div>
+      <div class="card"><h3>🎯 Défis collectifs</h3>${chs.length ? chs.map(c => `<div style="padding:10px 0;border-bottom:1px solid var(--line)"><b>${esc(c.title)}</b> ${c.active?badge('En cours','b-teal'):badge('Terminé','b-gray')} ${demoBadge(c)}<div class="small">${esc(c.question)}</div>${isMod()?`<button class="btn btn-ghost sm" style="margin-top:6px" data-act="toggleChallenge" data-id="${c.id}" data-v="${c.active?'0':'1'}">${c.active?'Clôturer':'Réactiver'}</button>`:''}</div>`).join('') : '<p class="muted">Aucun défi.</p>'}
+        ${isMod() ? `<form data-form="challenge" style="margin-top:14px"><div class="field"><label for="ch-t">Nouveau défi</label><input id="ch-t" type="text" name="title" required placeholder="Défi de décembre"></div><div class="field"><textarea name="question" required aria-label="Question du défi" placeholder="Comment… ?" style="min-height:70px"></textarea></div><div class="row2"><input type="date" name="ends_on" aria-label="Date de fin"><button class="btn btn-primary" type="submit">Lancer le défi</button></div></form>` : ''}</div>
+    </div>
+    <h2 style="margin-top:36px">Mon SPSTI · ${esc(orgName(S.org))}</h2>
+    <p class="muted small">Seuls le nom, le métier et le rôle sont visibles, et uniquement par les membres de votre SPSTI.</p>
+    <div class="grid g4">${mems.map(m => { const p = S.profiles[m.user_id]||{}; return `<div class="card flat" style="display:flex;gap:12px;align-items:center;padding:16px"><div class="avatar">${esc(initials(p.full_name))}</div><div><b>${esc(p.full_name||'Membre')}</b><div class="meta">${esc(p.job||'')}</div>${badge(ROLES[m.role], m.role==='admin_spsti'||m.role==='animateur'?'b-teal':'b-gray')}</div></div>`; }).join('')}</div>
+    <h2 style="margin-top:36px">Groupes thématiques</h2>
+    <div class="grid g3">${GROUPS.map(([i,l]) => `<div class="card flat"><h3>${i} ${l}</h3><p class="small muted" style="margin:0">Discussions par thème : ${badge('Phase 2','b-line')}</p></div>`).join('')}</div>
+    <h2 style="margin-top:36px">Le réseau</h2>
+    <div class="grid g3">${orgs.map(o => `<div class="card flat"><h3>${o.id===S.org?'🏠':'🌐'} ${esc(o.name)}</h3><p class="small muted" style="margin:0">${esc(o.region||'')}</p></div>`).join('')}</div>
+  </div>`;
+}
+
+/* ================= Tableau de bord ================= */
+async function pageDashboard(){
+  const [ideas, exps, prompts, logs, ints, mems, coms] = await Promise.all([
+    api.list('ideas',{eq:{org_id:S.org}}), api.list('experiments',{eq:{org_id:S.org}}), api.list('prompts',{eq:{org_id:S.org}}),
+    api.list('experiment_logs'), api.list('idea_interests',{order:null}), api.list('experiment_members',{order:null}), api.list('idea_comments')
+  ]);
+  const f = F.dash, since = { '30':30, '90':90, '365':365 }[f.period];
+  const inP = x => !since || new Date(x.created_at) > Date.now() - since*864e5;
+  const I = ideas.filter(i => inP(i) && (!f.job || i.job===f.job));
+  const E = exps.filter(inP);
+  const eIds = new Set(E.map(e=>e.id)), iIds = new Set(I.map(i=>i.id));
+  const L = logs.filter(l => eIds.has(l.experiment_id));
+  const participants = new Set([...I.map(i=>i.author_id), ...ints.filter(x=>iIds.has(x.idea_id)).map(x=>x.user_id), ...mems.filter(m=>eIds.has(m.experiment_id)).map(m=>m.user_id), ...L.map(l=>l.author_id), ...coms.filter(c=>iIds.has(c.idea_id)).map(c=>c.author_id)].filter(Boolean));
+  const studied = I.filter(i => i.status!=='nouvelle').length;
+  const running = E.filter(e => ['selectionnee','en_test'].includes(e.status)).length;
+  const evaluated = E.filter(e => ['en_evaluation','validee','partagee'].includes(e.status)).length;
+  const documented = E.filter(e => ['validee','partagee'].includes(e.status)).length;
+  const shared = [...I, ...E, ...prompts].filter(x => x.network_status==='approuve').length;
+  const est = E.reduce((s,e)=>s+(e.time_est_min||0),0), meas = E.filter(e=>e.time_measured_min!=null);
+  const measSum = meas.reduce((s,e)=>s+e.time_measured_min,0);
+  const sats = E.filter(e=>e.satisfaction); const sat = sats.length ? (sats.reduce((s,e)=>s+e.satisfaction,0)/sats.length).toFixed(1) : '—';
+  const risks = L.filter(l=>l.kind==='risque');
+  const kpi = (v,l,s='') => `<div class="card kpi"><div class="v">${v}</div><div class="l">${l}</div>${s?`<div class="s">${s}</div>`:''}</div>`;
+  const maxSt = Math.max(1, ...Object.keys(IDEA_ST).map(k => I.filter(i=>i.status===k).length));
+  return `<div class="wrap page">
+    <div class="page-head"><div><span class="eyebrow">Tableau de bord · ${esc(orgName(S.org))}</span><h1 style="font-size:2.2rem;margin:0">Ce que le pilote produit</h1><p>Indicateurs collectifs. Ils ne servent jamais à évaluer ou classer une personne.</p></div>
+      <div class="chips"><select aria-label="Période" data-dash="period"><option value="all">Depuis le début</option><option value="30" ${f.period==='30'?'selected':''}>30 derniers jours</option><option value="90" ${f.period==='90'?'selected':''}>3 derniers mois</option><option value="365" ${f.period==='365'?'selected':''}>12 derniers mois</option></select>
+      <select aria-label="Métier" data-dash="job">${jobOpts(f.job,'Tous les métiers')}</select></div></div>
+    <div class="grid g4">
+      ${kpi(I.length,'idées déposées')}${kpi(studied,'idées étudiées')}${kpi(running,'expérimentations en cours')}${kpi(evaluated,'expérimentations évaluées')}
+      ${kpi(documented,'solutions documentées','Validées pour un usage défini')}${kpi(shared,'contenus partagés au réseau')}${kpi(participants.size,'participants actifs','Personnes ayant contribué')}${kpi(sat,'satisfaction moyenne / 5',sats.length+' évaluation(s)')}
+    </div>
+    <div class="grid g2" style="margin-top:22px">
+      <div class="card"><h3>Entonnoir des idées</h3><div class="bars">${Object.entries(IDEA_ST).map(([k,[l]]) => { const n = I.filter(i=>i.status===k).length; return `<div class="bar-row"><span>${l}</span><div class="bar-track"><div class="bar-fill" style="width:${n/maxSt*100}%;${k==='non_retenue'?'background:var(--line)':k==='partagee'?'background:var(--green)':''}"></div></div><b>${n}</b></div>`; }).join('')}</div></div>
+      <div class="card"><h3>⏱ Temps gagné</h3>
+        <div class="grid g2"><div class="kpi"><div class="v">${est}</div><div class="l">min / sem. estimées</div><div class="s">${badge('Estimation','b-gray')}</div></div>
+        <div class="kpi"><div class="v">${meas.length?measSum:'—'}</div><div class="l">min / sem. mesurées</div><div class="s">${badge(meas.length+' mesure(s)','b-teal')}</div></div></div>
+        <p class="small muted" style="margin-top:12px">Somme des gains par utilisateur et par semaine déclarés dans chaque fiche. Une estimation n'est jamais présentée comme une mesure. Méthode documentée dans chaque expérimentation.</p></div>
+    </div>
+    <div class="grid g2" style="margin-top:22px">
+      <div class="card"><h3>Détail par expérimentation</h3><div class="table-wrap"><table><thead><tr><th>Projet</th><th>Statut</th><th>Estimé</th><th>Mesuré</th></tr></thead><tbody>${E.map(e=>`<tr><td><a href="#/experiences/${e.id}">${esc(e.name)}</a></td><td>${badge(EXP_ST[e.status][0],EXP_ST[e.status][1])}</td><td>${e.time_est_min??'—'}</td><td>${e.time_measured_min??'—'}</td></tr>`).join('') || '<tr><td colspan="4" class="muted">Aucune donnée</td></tr>'}</tbody></table></div></div>
+      <div class="card"><h3>⚠️ Risques et limites récurrents</h3>${risks.length ? risks.slice(0,6).map(r=>`<p class="small" style="border-left:3px solid var(--red);padding-left:10px">${esc(r.body)}</p>`).join('') : '<p class="muted">Aucun risque signalé dans les journaux.</p>'}</div>
+    </div></div>`;
+}
+
+/* ================= Administration ================= */
+async function pageAdmin(){
+  if (!isAdmin() && !S.netAdmin) return `<div class="wrap page">${empty('Espace réservé aux administrateurs.')}</div>`;
+  let html = `<div class="wrap page"><div class="page-head"><div><span class="eyebrow">Administration · ${esc(orgName(S.org))}</span><h1 style="font-size:2.2rem;margin:0">Gouvernance du pilote</h1></div></div>`;
+  if (isAdmin()) {
+    const [mems, sec, qi, qe, qp, qt, logs] = await Promise.all([
+      api.list('memberships',{eq:{org_id:S.org},asc:true}), api.list('org_secrets',{eq:{org_id:S.org},order:null}),
+      api.list('ideas',{eq:{org_id:S.org,network_status:'en_attente'}}), api.list('experiments',{eq:{org_id:S.org,network_status:'en_attente'}}),
+      api.list('prompts',{eq:{org_id:S.org,network_status:'en_attente'}}), api.list('tools',{eq:{org_id:S.org,network_status:'en_attente'}}),
+      api.list('audit_log',{eq:{org_id:S.org},limit:40})
+    ]);
+    const queue = [...qi.map(x=>['ideas',x.title,x,'#/idees/'+x.id]), ...qe.map(x=>['experiments',x.name,x,'#/experiences/'+x.id]), ...qp.map(x=>['prompts',x.title,x,'#/prompt/'+x.id]), ...qt.map(x=>['tools',x.name,x,'#/outils/catalogue'])];
+    const TL = { ideas:'Idée', experiments:'Expérimentation', prompts:'Prompt', tools:'Outil' };
+    const AL = { statut:'Changement de statut', partage_reseau:'Partage réseau', adhesion:'Adhésion', role:'Changement de rôle', retrait:'Retrait d\'un membre', nouveau_code:'Nouveau code d\'adhésion' };
+    html += `<div class="grid g2">
+      <div class="card"><h3>🔑 Code d'adhésion</h3><p class="small muted">À transmettre aux volontaires du pilote. Régénérez-le si vous pensez qu'il a circulé.</p>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><code style="font-size:1.4rem;letter-spacing:.18em;font-weight:700;background:var(--navy-soft);padding:8px 14px;border-radius:10px" id="jcode">${esc(sec[0]?.join_code||'—')}</code>
+        <button class="btn btn-ghost sm" data-act="copyCode">Copier</button><button class="btn btn-danger sm" data-act="regenCode">Régénérer</button></div></div>
+      <div class="card"><h3>🌐 Partages réseau à valider (${queue.length})</h3>${queue.length ? queue.map(([t,l,x,h]) => `<div style="display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);align-items:center"><div>${badge(TL[t],'b-gray')} <a href="${h}">${esc(l)}</a></div><div class="chips"><button class="btn btn-primary sm" data-act="netMod" data-t="${t}" data-id="${x.id}" data-v="approuve">Valider</button><button class="btn btn-danger sm" data-act="netMod" data-t="${t}" data-id="${x.id}" data-v="refuse">Refuser</button></div></div>`).join('') : '<p class="muted">Rien à valider.</p>'}</div>
+    </div>
+    <div class="card" style="margin-top:22px"><h3>👥 Membres et rôles (${mems.length})</h3><div class="table-wrap"><table><thead><tr><th>Nom</th><th>Métier</th><th>Rôle</th><th></th></tr></thead><tbody>
+      ${mems.map(m => { const p = S.profiles[m.user_id]||{}, me = m.user_id===S.user.id; return `<tr><td>${esc(p.full_name||'Membre')}${me?' (vous)':''}</td><td>${esc(p.job||'')}</td><td>${me ? badge(ROLES[m.role],'b-teal') : `<select aria-label="Rôle de ${esc(p.full_name)}" data-role-user="${m.user_id}">${opts(ROLES,m.role)}</select>`}</td><td>${me?'':`<button class="btn btn-danger sm" data-act="removeMember" data-id="${m.user_id}">Retirer</button>`}</td></tr>`; }).join('')}
+    </tbody></table></div>
+    <p class="small muted" style="margin-top:10px"><b>Collaborateur</b> : idées, commentaires, tests ouverts · <b>Expérimentateur</b> : crée et documente des tests · <b>Animateur</b> : statuts, défis, outils · <b>Administrateur</b> : membres, partage réseau, journal.</p></div>
+    <div class="card" style="margin-top:22px"><h3>📜 Journal des actions sensibles</h3><div class="table-wrap"><table><thead><tr><th>Date</th><th>Action</th><th>Par</th><th>Détail</th></tr></thead><tbody>
+      ${logs.map(l => `<tr><td class="small">${new Date(l.created_at).toLocaleString('fr-FR')}</td><td>${esc(AL[l.action]||l.action)}</td><td>${esc(S.profiles[l.actor_id]?.full_name || (l.actor_id?'Membre':'Système'))}</td><td class="small">${esc(l.target_type||'')} ${l.detail ? esc(Object.entries(l.detail).map(([k,v])=>k+' : '+v).join(' → ')) : ''}</td></tr>`).join('') || '<tr><td colspan="4" class="muted">Aucune action enregistrée.</td></tr>'}
+    </tbody></table></div></div>`;
+  }
+  if (S.netAdmin) {
+    html += `<div class="card" style="margin-top:22px;border-color:var(--teal)"><h3>🌐 Administration réseau · ajouter un SPSTI</h3>
+      <p class="small muted">Vous deviendrez administrateur provisoire du nouvel espace pour remettre le code d'adhésion à son futur administrateur. Aucune donnée existante ne devient visible pour lui.</p>
+      <form data-form="newOrg" class="row2"><input type="text" name="name" required placeholder="Nom complet du SPSTI" aria-label="Nom complet"><div style="display:flex;gap:10px"><input type="text" name="short" required placeholder="Nom court" aria-label="Nom court"><button class="btn btn-primary" type="submit">Créer</button></div></form></div>`;
+  }
+  return html + '</div>';
+}
+
+/* ================= Profil ================= */
+async function pageProfile(){
+  const pp = S.org ? await passportData() : null;
+  return `<div class="wrap page" style="max-width:900px"><h1 style="font-size:2.2rem">Mon profil</h1>
+  <div class="grid g2">
+    <form data-form="profile" class="card"><h3>Informations</h3>
+      <div class="field"><label for="pf-n">Prénom et nom</label><input id="pf-n" type="text" name="full_name" required maxlength="80" value="${esc(S.profile?.full_name)}"></div>
+      <div class="field"><label for="pf-j">Métier</label><select id="pf-j" name="job">${jobOpts(S.profile?.job)}</select></div>
+      <p class="small muted">${esc(S.user.email||'')}</p>
+      <button class="btn btn-primary" type="submit">Enregistrer</button></form>
+    <div class="card"><h3>Mes SPSTI</h3>
+      ${S.memberships.map(m => `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);gap:10px"><div><b>${esc(orgName(m.org_id))}</b><div>${badge(ROLES[m.role],'b-gray')}</div></div>${m.org_id===S.org ? badge('Espace actif','b-teal') : `<button class="btn btn-ghost sm" data-act="switchOrg" data-id="${m.org_id}">Basculer</button>`}</div>`).join('') || '<p class="muted">Aucun SPSTI.</p>'}
+      <a class="btn btn-ghost sm" style="margin-top:12px" href="#/rejoindre">Rejoindre un autre SPSTI</a>
+      <div class="chips" style="margin-top:20px">${S.org && !S.demo?`<button class="btn btn-danger sm" data-act="leaveOrg">Quitter ${esc(orgName(S.org))}</button>`:''}<button class="btn btn-ghost sm" data-act="logout">Se déconnecter</button></div></div>
+  </div>
+  ${pp ? `<div class="card" style="margin-top:22px"><h3>🎫 Mon passeport IA</h3><p class="small muted">Chaque tampon correspond à une manière de contribuer. Il n'existe aucun classement entre collègues.</p>${passport(pp)}</div>` : ''}
+  <div class="card flat" style="margin-top:22px"><h3>📘 Charte d'usage en bref</h3><ol class="small" style="margin:0;padding-left:20px">
+    <li>Je pars d'un besoin réel, l'IA est un moyen.</li><li>Je respecte le feu tricolore : jamais de donnée de santé ni nominative.</li>
+    <li>Je relis et vérifie toute production d'IA avant usage.</li><li>Je n'utilise que les outils autorisés pour l'usage prévu.</li>
+    <li>Je partage mes résultats, y compris quand ça ne marche pas.</li><li>Une décision professionnelle reste toujours humaine.</li></ol></div></div>`;
+}
+
+/* ================= Formulaires ================= */
+const FORMS = {
+  async login(d){ const { error } = await sb.auth.signInWithPassword({ email:d.email, password:d.password }); if (error) throw error; await loadContext(); go(S.org ? '#/' : '#/rejoindre'); },
+  async signup(d){
+    const { data, error } = await sb.auth.signUp({ email:d.email, password:d.password, options:{ data:{ full_name:d.full_name, job:d.job }, emailRedirectTo: location.href.split('#')[0] } });
+    if (error) throw error;
+    if (!data.session) { modal(`<h3>📩 Vérifiez votre boîte mail</h3><p>Un lien de confirmation a été envoyé à <b>${esc(d.email)}</b>. Cliquez dessus puis revenez vous connecter.</p><div class="dlg-foot"><button class="btn btn-primary" onclick="document.getElementById('dlg').close()">Compris</button></div>`); CUR.authTab='login'; route(); return; }
+    await loadContext(); go('#/rejoindre');
+  },
+  async join(d){ await api.rpc('join_organization', { p_code:d.code }); await loadContext(); toast('Bienvenue dans le réseau !'); go('#/'); },
+  async idea(d, f){
+    if (d.data_level==='rouge') throw new Error('Données 🔴 interdites : reformulez sans information de santé ni nominative.');
+    const row = clean({ title:d.title, problem:d.problem, job:d.job, frequency:d.frequency, impact:d.impact, solution:d.solution, data_level:d.data_level, visibility:d.visibility });
+    if (f.dataset.id) { await api.update('ideas', { id:f.dataset.id }, row); toast('Idée mise à jour'); go('#/idees/'+f.dataset.id); }
+    else { const r = await api.insert('ideas', { ...row, org_id:S.org }); toast(row.visibility==='reseau' ? 'Idée publiée — partage réseau en attente de validation' : 'Merci ! Votre idée est publiée 💡'); go('#/idees/'+r.id); }
+  },
+  async ideaStatus(d, f){ await api.update('ideas', { id:f.dataset.id }, { status:d.status, status_note:d.status_note||null }); toast('Statut mis à jour'); route(); },
+  async comment(d, f){ await api.insert(f.dataset.t, { [f.dataset.k]:f.dataset.id, body:d.body.trim() }); toast('Publié'); route(); },
+  async exp(d, f){
+    if (d.data_level==='rouge') throw new Error('Données 🔴 interdites dans une expérimentation sans cadre formellement autorisé.');
+    const row = clean(d);
+    for (const k of ['time_est_min','time_measured_min','satisfaction']) if (k in row) row[k] = row[k]==null ? null : Number(row[k]);
+    if (f.dataset.id) { delete row.idea_id; await api.update('experiments', { id:f.dataset.id }, row); toast('Fiche enregistrée'); go('#/experiences/'+f.dataset.id); }
+    else {
+      const r = await api.insert('experiments', { ...row, org_id:S.org });
+      try { await api.insert('experiment_members', { experiment_id:r.id, user_id:S.user.id }); } catch {}
+      if (row.idea_id && isMod()) { try { await api.update('ideas', { id:row.idea_id }, { status:'en_test' }); } catch {} }
+      toast('Expérimentation créée 🧪'); go('#/experiences/'+r.id);
+    }
+  },
+  async expStatus(d, f){ await api.update('experiments', { id:f.dataset.id }, { status:d.status }); toast('Statut mis à jour'); route(); },
+  async log(d, f){ await api.insert('experiment_logs', { experiment_id:f.dataset.id, kind:d.kind, body:d.body.trim() }); toast('Ajouté au journal'); route(); },
+  async prompt(d, f){
+    if (d.data_level==='rouge') throw new Error('Un prompt partagé ne doit contenir aucune donnée 🔴.');
+    const row = clean(d);
+    if (f.dataset.id) { await api.update('prompts', { id:f.dataset.id }, row); toast('Prompt mis à jour'); go('#/prompt/'+f.dataset.id); }
+    else { const r = await api.insert('prompts', { ...row, org_id:S.org }); toast('Prompt partagé ✍️'); go('#/prompt/'+r.id); }
+  },
+  async tool(d, f){
+    const row = clean(d);
+    if (f.dataset.id) await api.update('tools', { id:f.dataset.id }, row); else await api.insert('tools', { ...row, org_id:S.org });
+    toast('Outil enregistré'); go('#/outils/catalogue');
+  },
+  async challenge(d){ await api.insert('challenges', clean({ ...d, org_id:S.org })); toast('Défi lancé 🎯'); route(); },
+  async profile(d){ await api.update('profiles', { id:S.user.id }, clean(d)); await loadContext(); toast('Profil enregistré'); route(); },
+  async newOrg(d){ await api.rpc('create_organization', { p_name:d.name, p_short:d.short }); await loadContext(); toast('SPSTI créé. Basculez dessus depuis votre profil pour obtenir son code.'); route(); },
+  async newPassword(d){ const { error } = await sb.auth.updateUser({ password:d.password }); if (error) throw error; closeModal(); toast('Mot de passe modifié'); }
+};
+
+/* ================= Actions ================= */
+const ACTS = {
+  burger(el){ const n = $('#nav'); n.classList.toggle('open'); el.setAttribute('aria-expanded', n.classList.contains('open')); },
+  authTab(el, ev){ ev.preventDefault(); CUR.authTab = el.dataset.t; route(); },
+  async forgot(el, ev){
+    ev.preventDefault();
+    const email = $('#em')?.value;
+    if (!email) { toast('Saisissez d\'abord votre e-mail', 'err'); $('#em')?.focus(); return; }
+    const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.href.split('#')[0] });
+    if (error) throw error; toast('Si un compte existe, un e-mail de réinitialisation a été envoyé.');
+  },
+  async startDemo(){ seedDemo(); S.demo = true; S.org = 'org-a'; try{localStorage.setItem('pr-org','org-a');}catch{} await loadContext(); go('#/'); toast('Bienvenue dans la démo : vous êtes administratrice fictive.'); },
+  async exitDemo(){ S.demo = false; D = null; await loadContext(); go('#/'); },
+  async logout(el, ev){ ev?.preventDefault(); if (S.demo) return ACTS.exitDemo(); await sb.auth.signOut(); await loadContext(); go('#/'); },
+  needInspire(){ CUR.inspire = true; },
+  challengeIdea(el){ CUR.prefill = { problem:'Défi du moment : ' + el.dataset.q + '\n\nMa proposition : ' }; },
+  inspire(el){ const [t,p] = INSPIRE[+el.dataset.k]; const f = document.querySelector('form[data-form=idea]').elements; f.namedItem('title').value = t; f.namedItem('problem').value = p; f.namedItem('problem').focus(); },
+  scrollExps(){ document.getElementById('experimentations')?.scrollIntoView({ behavior:'smooth' }); },
+  async interest(el){
+    const test = el.dataset.test==='1', mine = CUR.myInterest, id = CUR.idea.id;
+    if (!test && mine) await api.del('idea_interests', { idea_id:id, user_id:S.user.id });
+    else if (test && mine?.wants_to_test) await api.update('idea_interests', { idea_id:id, user_id:S.user.id }, { wants_to_test:false });
+    else await api.upsert('idea_interests', { idea_id:id, user_id:S.user.id, wants_to_test:test }, ['idea_id','user_id']);
+    route();
+  },
+  async delComment(el){ if (!await confirmBox('Supprimer ce commentaire ?','Supprimer')) return; await api.del(el.dataset.t, { id:el.dataset.id }); route(); },
+  async delItem(el){ if (!await confirmBox('Supprimer définitivement cet élément ?','Supprimer')) return; await api.del(el.dataset.t, { id:el.dataset.id }); toast('Supprimé'); go(el.dataset.back); },
+  async netMod(el){ await api.update(el.dataset.t, { id:el.dataset.id }, { network_status:el.dataset.v }); toast(el.dataset.v==='approuve' ? 'Partage réseau validé 🌐' : 'Partage refusé'); route(); },
+  async joinExp(el){ await api.insert('experiment_members', { experiment_id:el.dataset.id, user_id:S.user.id }); toast('Vous rejoignez les testeurs 🙋'); route(); },
+  async leaveExp(el){ await api.del('experiment_members', { experiment_id:el.dataset.id, user_id:S.user.id }); route(); },
+  copyPrompt(el){ const p = (CUR.prompts||[]).find(x=>x.id===el.dataset.id) || CUR.prompt; if (p) copyText(p.content); },
+  async verifyPrompt(el){ await api.update('prompts', { id:el.dataset.id }, { verified_at:new Date().toISOString().slice(0,10) }); toast('Date de vérification mise à jour'); route(); },
+  toolDetail(el){
+    const t = CUR.tools.find(x=>x.id===el.dataset.id); if (!t) return;
+    const row = (l,v) => v ? `<div class="sec"><h3>${l}</h3><div class="txt">${nl(v)}</div></div>` : '';
+    modal(`<div class="badges">${badge(MATURITY[t.maturity][0],MATURITY[t.maturity][2])}${demoBadge(t)}</div><h2>${esc(t.name)}</h2>
+      ${row('Objectif',t.purpose)}${row('Problème résolu',t.problem)}${row('Métier',t.job)}${row('Conditions d\'accès',t.access)}
+      <div class="grid g2">${row('🟢 Données autorisées',t.allowed_data)}${row('🔴 Données interdites',t.forbidden_data)}</div>
+      ${row('Limites connues',t.limits)}${row('Guide d\'utilisation',t.guide)}${row('Exemple',t.example)}${row('Référent',t.referent)}
+      ${t.url && /^https?:\/\//.test(t.url) ? `<p><a href="${esc(t.url)}" target="_blank" rel="noopener">Ouvrir l'outil ↗</a></p>` : ''}
+      <div class="dlg-foot">${isMod() && t.org_id===S.org ? `<a class="btn btn-ghost" href="#/outil-modifier/${t.id}" onclick="document.getElementById('dlg').close()">Modifier</a>` : ''}<button class="btn btn-primary" onclick="document.getElementById('dlg').close()">Fermer</button></div>`);
+  },
+  async toggleChallenge(el){ await api.update('challenges', { id:el.dataset.id }, { active:el.dataset.v==='1' }); route(); },
+  copyCode(){ copyText($('#jcode').textContent); },
+  async regenCode(){ if (!await confirmBox('Régénérer le code ? L\'ancien ne fonctionnera plus.','Régénérer')) return; await api.rpc('regenerate_join_code', { p_org:S.org }); toast('Nouveau code généré'); route(); },
+  async removeMember(el){ if (!await confirmBox('Retirer ce membre de votre SPSTI ?','Retirer')) return; await api.del('memberships', { org_id:S.org, user_id:el.dataset.id }); toast('Membre retiré'); route(); },
+  async switchOrg(el){ S.org = el.dataset.id; S.role = S.memberships.find(m=>m.org_id===S.org)?.role; try{localStorage.setItem('pr-org',S.org);}catch{} toast('Espace : ' + orgName(S.org)); go('#/'); },
+  async leaveOrg(){ if (!await confirmBox('Quitter ce SPSTI ? Vos contributions restent visibles par ses membres.','Quitter')) return; await api.del('memberships', { org_id:S.org, user_id:S.user.id }); try{localStorage.removeItem('pr-org');}catch{} await loadContext(); go('#/'); }
+};
+
+/* ================= Écouteurs globaux ================= */
+document.addEventListener('click', async e => {
+  const el = e.target.closest('[data-act]'); if (!el) {
+    if (e.target.closest('#nav a')) $('#nav')?.classList.remove('open');
+    return;
+  }
+  const fn = ACTS[el.dataset.act]; if (!fn) return;
+  try { await fn(el, e); } catch (err) { console.error(err); toast(errMsg(err), 'err'); }
+});
+document.addEventListener('submit', async e => {
+  const f = e.target.closest('form[data-form]'); if (!f) return;
+  e.preventDefault();
+  const btn = f.querySelector('[type=submit]'); if (btn) btn.disabled = true;
+  try { await FORMS[f.dataset.form](Object.fromEntries(new FormData(f)), f); }
+  catch (err) { console.error(err); toast(errMsg(err), 'err'); }
+  finally { if (btn && btn.isConnected) btn.disabled = false; }
+});
+document.addEventListener('input', e => {
+  const k = e.target.dataset.filter; if (!k) return;
+  const [g, field] = k.split('.'); F[g][field] = e.target.value;
+  ({ ideas:renderIdeaList, exps:renderExpList, prompts:renderPromptList })[g]?.();
+});
+document.addEventListener('change', async e => {
+  const t = e.target;
+  if (t.name === 'data_level') {
+    const f = t.closest('form'); const red = t.value === 'rouge';
+    f.querySelector('.stop')?.classList.toggle('show', red);
+    const b = f.querySelector('[type=submit]'); if (b) b.disabled = red;
+  }
+  if (t.dataset.dash) { F.dash[t.dataset.dash] = t.value; route(); }
+  if (t.dataset.roleUser) {
+    try { await api.update('memberships', { org_id:S.org, user_id:t.dataset.roleUser }, { role:t.value }); toast('Rôle mis à jour'); }
+    catch (err) { toast(errMsg(err), 'err'); route(); }
+  }
+});
+window.addEventListener('hashchange', route);
+
+/* ================= Démarrage ================= */
+(async function init(){
+  if (sb) {
+    sb.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        modal(`<h3>Choisir un nouveau mot de passe</h3><form data-form="newPassword"><div class="field"><label for="np">Nouveau mot de passe</label><input id="np" type="password" name="password" minlength="8" required autocomplete="new-password"></div><div class="dlg-foot"><button class="btn btn-primary" type="submit">Enregistrer</button></div></form>`);
+      }
+    });
+  }
+  try { await loadContext(); } catch (e) { console.error(e); toast(errMsg(e), 'err'); }
+  route();
+})();
+</script>
+</body>
+</html>
