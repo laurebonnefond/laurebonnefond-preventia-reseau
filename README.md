@@ -31,9 +31,11 @@
 | 💡 **Idées** | Déposer une problématique terrain en 2 minutes, sans vocabulaire technique ; soutiens « ça m'intéresse » / « je veux tester » ; commentaires |
 | 🧪 **Expérimentations** | Fiche projet en 12 points (hypothèse, protocole, résultats, limites, décision), journal des testeurs, indicateurs estimés **et** mesurés |
 | 🧰 **Boîte à outils** | Bibliothèque de prompts copiables, catalogue d'outils IA avec niveau de maturité |
-| 💬 **Échanges & équipes** | Fil général du SPSTI, fils privés par équipe, **messages privés 1:1**, temps réel |
+| 💬 **Échanges & équipes** | Fil général du SPSTI, équipes **ouvertes ou sur invitation** auxquelles on rattache idées, tests et documents, **messages privés 1:1**, temps réel |
 | 📁 **Base documentaire** | Dépôt de procédures, modèles vierges et supports, protégés par SPSTI ; partage réseau validé |
-| 👥 **Communauté** | Appels à volontaires, défis collectifs, annuaire du SPSTI, SPSTI du réseau |
+| 👥 **Communauté** | Appels à volontaires, défis collectifs, annuaire du SPSTI, **groupes thématiques inter-SPSTI**, vue d'ensemble du réseau |
+| 🔁 **Reproduire** | Reprendre dans son SPSTI le cadre d'un test partagé par un autre ; le SPSTI d'origine voit combien de fois il a été repris |
+| 🔎 **Recherche** | Une seule recherche sur les idées, tests, prompts et documents ; idées proches signalées pendant la saisie |
 | 📊 **Tableau de bord du SPSTI** | Indicateurs collectifs (jamais de classement individuel), entonnoir des idées, temps gagné |
 | 🛡️ **Administration** | Code d'adhésion, rôles, validation des partages réseau, journal des actions sensibles |
 | 🤖 **Assistant IA** | *En construction* : cadrage en cours (voir [feuille de route](#feuille-de-route)) |
@@ -45,7 +47,7 @@
  (terrain)   (2 min)  (volontaires) (mesure + décision) (réseau des SPSTI)
 ```
 
-Une idée populaire n'est **jamais** validée par sa seule popularité : pour passer aux statuts « Validée » ou « Partagée », il faut que les résultats **et** la décision aient été documentés. La base de données bloque ce passage tant que ce n'est pas fait.
+Une idée populaire n'est **jamais** validée par sa seule popularité. Une expérimentation ne passe « Validée » ou « Partagée » que si ses résultats **et** sa décision sont documentés ; une idée ne passe « Validée » ou « Partagée » que si une expérimentation liée l'est. Le statut de l'idée suit automatiquement celui de son test. Ces règles sont appliquées par la base, pas seulement par l'écran.
 
 ### Le parcours IA (progression personnelle)
 
@@ -63,7 +65,7 @@ C'est un simple indicateur de progression, qui n'est pas cliquable et ne produit
 ┌──────────────── GitHub Pages ────────────────┐
 │  index.html  (application monofichier)       │
 │  HTML + CSS + JavaScript, sans build         │
-│  assets/  (photos)                           │
+│  assets/  (photos, polices, supabase-js)     │
 └──────────────────────┬───────────────────────┘
                        │ supabase-js v2 (clé publique)
                        ▼
@@ -78,6 +80,7 @@ C'est un simple indicateur de progression, qui n'est pas cliquable et ne produit
 - **Monofichier** : toute l'application tient dans `index.html` (routeur par `#/…`, rendu par modèles littéraux).
 - **Clé publique uniquement** côté navigateur : la sécurité repose entièrement sur les politiques **RLS** en base.
 - **Mode démo** : une couche `api` simule Supabase en mémoire avec des données fictives.
+- **Aucun appel à un tiers** : les polices et la librairie Supabase sont servies depuis `assets/`. Aucun service d'IA externe n'est appelé.
 
 ---
 
@@ -87,14 +90,15 @@ C'est un simple indicateur de progression, qui n'est pas cliquable et ne produit
 
 Le schéma de base (organisations, adhésions, idées, expérimentations, prompts, outils, défis, journal d'audit et les fonctions `is_member`, `has_role`, `content_guard`…) est déjà en place sur le projet.
 
-Exécuter ensuite **dans cet ordre**, depuis *Supabase → SQL Editor* :
+Exécuter ensuite, depuis *Supabase → SQL Editor*, les scripts du dossier `supabase/migrations/` dans l'ordre de leur date, **avant** de publier le `index.html` correspondant :
 
-| Ordre | Script | Ajoute |
-|---|---|---|
-| 1 | `migration_equipes_echanges.sql` | Tables `teams`, `team_members`, `messages` + RLS + temps réel |
-| 2 | `migration_messages_documents.sql` | Table `direct_messages`, table `documents`, compartiment Storage `documents` + politiques |
+| Script | Ajoute |
+|---|---|
+| `2026-11-16_ameliorations_audit.sql` | Équipes sur invitation, rattachement à une équipe, reproduction d'un test, statut d'idée synchronisé, groupes inter-SPSTI, signalements, domaines e-mail autorisés, retour « a marché » sur les prompts, vue réseau, suppression de compte |
 
 Les scripts sont **ré-exécutables** sans risque : ils utilisent `if not exists` et suppriment chaque politique avant de la recréer.
+
+> ⚠️ Les scripts d'origine (schéma de base, équipes, messages, documents) ne sont pas encore dans ce dépôt. Pour rendre la sécurité vérifiable par un DPO ou un autre SPSTI, exporter le schéma complet : `supabase db dump --schema public,storage -f supabase/schema.sql`.
 
 ### 2. Configuration du front
 
@@ -103,7 +107,8 @@ Dans `index.html`, objet `CONFIG` :
 ```js
 const CONFIG = {
   url: 'https://<projet>.supabase.co',
-  key: 'sb_publishable_…'   // clé publique : la sécurité repose sur la RLS
+  key: 'sb_publishable_…',  // clé publique : la sécurité repose sur la RLS
+  legal: { responsable:'', contact:'', conservation:'' }   // page « Confidentialité », à compléter avec le DPO
 };
 ```
 
@@ -146,7 +151,7 @@ Dans une équipe, son **référent** (le créateur, par défaut) peut ajouter de
 |---|---|---|---|
 | 🟢 | Fictif ou public | Textes INRS, Code du travail, modèles vierges | Autorisé |
 | 🟠 | Interne non nominatif | Organisation, statistiques agrégées | Autorisé, jamais vers un outil IA externe non validé |
-| 🔴 | Santé ou nominatif | DMST, noms de salariés, documents d'adhérents | **Bloqué** : le formulaire refuse l'envoi |
+| 🔴 | Santé ou nominatif | DMST, noms de salariés, documents d'adhérents | **Interdit** : refus si l'auteur le déclare, blocage d'un n° de sécurité sociale, alerte avant envoi sur un nom, un téléphone, un e-mail ou une date de naissance, et bouton « Signaler ». Ce contrôle est une aide, pas une garantie |
 
 ### Cloisonnement
 
@@ -154,9 +159,13 @@ Dans une équipe, son **référent** (le créateur, par défaut) peut ajouter de
 |---|---|
 | Idées, prompts, documents « Mon SPSTI » | Membres du SPSTI |
 | Contenus « Réseau » | Autres SPSTI, **après validation** de l'admin du SPSTI d'origine |
-| Contenus « Privé » | Leur auteur uniquement |
+| Idée ou expérimentation « Privée » | Son auteur et les animateurs de son SPSTI |
+| Prompt ou document « Privé » | Son auteur uniquement |
+| Outil « Privé » | Les animateurs du SPSTI uniquement |
 | Fil général | Membres du SPSTI |
-| Fil d'équipe | Membres de l'équipe uniquement |
+| Fil d'équipe | Membres de l'équipe. Équipe **ouverte** : tout membre du SPSTI peut la rejoindre et lire l'historique. Équipe **sur invitation** : seul le référent ajoute des membres |
+| Groupe thématique du réseau | Tous les SPSTI ; l'auteur apparaît comme « Membre — nom du SPSTI » hors de son service |
+| Signalement | Son auteur, les animateurs et administrateurs de son SPSTI |
 | Message privé | **Expéditeur et destinataire uniquement**, y compris vis-à-vis de l'admin |
 | Fichier déposé | Uniquement si sa fiche est visible ; lien de téléchargement valable 2 minutes |
 
@@ -170,7 +179,9 @@ Dans une équipe, son **référent** (le créateur, par défaut) peut ajouter de
 
 - Toutes les données sont hébergées dans l'**UE (Irlande)** par Supabase.
 - Aucune donnée de santé ne doit être saisie : le portail **n'est pas** un outil de suivi individuel des salariés.
-- La charte d'usage figure dans *Mon profil*. Le registre des traitements et la durée de conservation sont à valider avec le DPO du SPSTI.
+- La charte d'usage figure dans *Mon profil*, la page *Confidentialité* dans le pied de page. Chaque membre peut télécharger ses données et supprimer son compte.
+- Restent à faire avec le DPO : responsable de traitement, contact et durée de conservation (`CONFIG.legal`), registre des traitements, convention entre SPSTI.
+- L'adhésion peut être limitée aux adresses e-mail du service (*Administration → Adresses e-mail autorisées*).
 
 ---
 
@@ -180,7 +191,7 @@ Les photos sont dans `assets/`. Si l'une d'elles manque, un dégradé de couleur
 
 | Fichier | Utilisé pour |
 |---|---|
-| `hero.png` | Page d'accueil publique |
+| `hero.webp` | Page d'accueil publique |
 | `bandeau-accueil.jpg` | Accueil connecté |
 | `bandeau-idees.jpg`, `bandeau-experiences.jpg`, `bandeau-outils.jpg` | Rubriques Innover |
 | `bandeau-echanges.jpg`, `bandeau-communaute.jpg` | Rubriques Collaborer |
@@ -196,10 +207,11 @@ Les images actuelles ont été **générées par IA** : on n'y voit aucune perso
 
 ```
 .
-├── index.html                          Application complète
-├── assets/                             Photos (bandeaux + couvertures)
-├── migration_equipes_echanges.sql      Équipes et messages d'équipe
-├── migration_messages_documents.sql    Messages privés et base documentaire
+├── index.html               Application complète
+├── assets/                  Photos (bandeaux + couvertures)
+│   ├── fonts/               Polices DM Sans et DM Serif Display (licence OFL)
+│   └── vendor/              supabase-js, version figée
+├── supabase/migrations/     Scripts SQL à exécuter dans l'ordre
 └── README.md
 ```
 
@@ -212,10 +224,14 @@ Les images actuelles ont été **générées par IA** : on n'y voit aucune perso
 - [x] Échanges : fil général, équipes, messages privés en temps réel
 - [x] Base documentaire protégée par SPSTI
 - [ ] **Assistant IA**, à cadrer avant ouverture :
+  0. **Premiers usages visés** (plus légers qu'un chatbot) : aide à formuler une idée, synthèse du journal d'un test en bilan ;
   1. **Fournisseur** : Mistral (français, hébergement UE) ou Claude, avec une clé API cachée dans une Supabase Edge Function ;
   2. **Périmètre** : des réponses fondées sur la base documentaire, sources citées ;
   3. **Garde-fous** : filtre des données sensibles avant envoi, mention « vous échangez avec une IA » (AI Act, art. 50), validation DPO.
-- [ ] Groupes thématiques inter-SPSTI
+- [x] Groupes thématiques inter-SPSTI, reproduction d'un test, vue d'ensemble du réseau
+- [x] Équipes sur invitation, signalements, détection de données nominatives, export et suppression de compte
+- [ ] Projet Supabase dédié au portail (il est aujourd'hui partagé avec d'autres applications) et retrait des SPSTI de test
+- [ ] Export du schéma complet dans `supabase/schema.sql`
 - [ ] Passage à l'offre Supabase Pro dès l'ouverture à d'autres SPSTI (l'offre gratuite plafonne à 1 Go de fichiers)
 
 ---
