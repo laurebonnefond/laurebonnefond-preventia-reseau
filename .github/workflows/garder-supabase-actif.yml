@@ -1,0 +1,45 @@
+# Garde le projet Supabase actif (offre gratuite : pause après ~7 jours sans activité).
+# Tous les 3 jours, une requête de lecture est envoyée à la base. Elle ne lit ni ne modifie
+# aucune donnée : la clé publique n'a aucun droit sur les tables, et la réponse « permission
+# refusée » (code 42501) prouve justement que la base a été sollicitée.
+# À configurer une fois : Settings > Secrets and variables > Actions > New repository secret
+#   SUPABASE_URL       https://vjiryvqyijfljzsaekee.supabase.co
+#   SUPABASE_ANON_KEY  clé publique « publishable » (sb_publishable_...) du projet
+# Lancement manuel possible : onglet Actions > Garder Supabase actif > Run workflow.
+name: Garder Supabase actif
+
+on:
+  schedule:
+    - cron: '17 6 */3 * *'   # tous les 3 jours à 6 h 17 (UTC), soit 7 h 17 à Paris en hiver
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Interroger la base Supabase
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "::error::Secrets SUPABASE_URL et SUPABASE_ANON_KEY à ajouter dans Settings > Secrets and variables > Actions"
+            exit 1
+          fi
+          body=$(curl -s --max-time 60 -w "\nHTTP:%{http_code}" \
+            "$SUPABASE_URL/rest/v1/organizations?select=id&limit=1" \
+            -H "apikey: $SUPABASE_ANON_KEY")
+          code=${body##*HTTP:}
+          echo "Réponse de Supabase : HTTP $code"
+          if [ "$code" -ge 200 ] && [ "$code" -lt 300 ]; then
+            echo "Base active."
+          elif echo "$body" | grep -q '"42501"'; then
+            echo "Base active (accès refusé à la clé publique, comme prévu)."
+          else
+            echo "$body" | head -c 300
+            echo "::error::Supabase n'a pas répondu normalement : vérifier que le projet n'est pas en pause et que la clé est la bonne."
+            exit 1
+          fi
