@@ -519,6 +519,7 @@ const bannerStyle = k => `background-image:url('${IMG[k]}'),url('${HERO_IMG}'),l
 
 /* Icônes (traits) */
 const ICONS = {
+  drop:'<path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/><path d="M9.5 14.5a2.5 2.5 0 0 0 2.5 2.5"/>',
   home:'<path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/>',
   idea:'<path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.8.8 1 1.5 1 2.5h6c0-1 .2-1.7 1-2.5A6 6 0 0 0 12 3z"/>',
   flask:'<path d="M9 3h6"/><path d="M10 3v6L4.5 18.5A2 2 0 0 0 6.2 21h11.6a2 2 0 0 0 1.7-2.5L14 9V3"/><path d="M7 15h10"/>',
@@ -610,7 +611,7 @@ async function redCheck(...texts){
 /* ---------------- État ---------------- */
 const S = { demo:false, user:null, profile:null, memberships:[], orgs:{}, profiles:{}, teams:[], org:null, role:null, netAdmin:false };
 const CUR = {};       // données de la page courante
-const F = { ideas:{}, exps:{}, prompts:{}, docs:{}, dash:{ period:'all', job:'' } };
+const F = { ideas:{}, exps:{}, prompts:{}, docs:{}, fds:{}, dash:{ period:'all', job:'' } };
 const teamName = id => S.teams.find(t => t.id===id)?.name;
 const teamBadge = it => it.team_id && teamName(it.team_id) ? badge('👥 ' + esc(teamName(it.team_id)), 'b-gray') : '';
 const teamOpts = (sel, blank='Aucune équipe en particulier') => `<option value="">${blank}</option>` + S.teams.map(t => `<option value="${t.id}" ${t.id===sel?'selected':''}>${esc(t.name)}</option>`).join('');
@@ -922,7 +923,7 @@ async function loadContext(){
 /* ================= Coquille (barre, navigation) ================= */
 const PAGES = { '':['home','Accueil'], idees:['idea','Idées'], experiences:['flask','Expérimentations'], outils:['tools','Boîte à outils'],
   echanges:['chat','Échanges & équipes'], documents:['folder','Base documentaire'], assistant:['bot','Assistant IA'], communaute:['users','Communauté'], tableau:['chart','Tableau de bord du SPSTI'], admin:['shield','Administration'], profil:['user','Mon profil'],
-  recherche:['search','Recherche'], reseau:['users','Groupes du réseau'], confidentialite:['lock','Confidentialité'] };
+  fds:['drop','Base FDS'], recherche:['search','Recherche'], reseau:['users','Groupes du réseau'], confidentialite:['lock','Confidentialité'] };
 const PAGE_ALIAS = { reseau:'communaute', 'idee-modifier':'idees', 'experience-modifier':'experiences', prompt:'outils', 'prompt-nouveau':'outils', 'prompt-modifier':'outils', 'outil-nouveau':'outils', 'outil-modifier':'outils' };
 function renderShell(page){
   const logged = !!(S.user && S.org);
@@ -934,7 +935,7 @@ function renderShell(page){
     <a href="#/" class="brand" aria-label="PréventIA Réseau, accueil">${logo(32)}<span>PréventIA <b>Réseau</b></span></a>
     ${navA('')}
     <div class="side-grp">Innover</div>${navA('idees')}${navA('experiences')}${navA('outils')}
-    <div class="side-grp">Collaborer</div>${navA('echanges')}${navA('documents')}${navA('communaute')}${navA('assistant')}
+    <div class="side-grp">Collaborer</div>${navA('echanges')}${navA('documents')}${navA('fds')}${navA('communaute')}${navA('assistant')}
     <div class="side-grp">Piloter</div>${navA('tableau')}${isAdmin()||S.netAdmin ? navA('admin') : ''}
     <div class="side-user"><a class="avatar" href="#/profil" aria-label="Mon profil">${esc(initials(S.profile?.full_name))}</a>
       <div><b>${esc((S.profile?.full_name||'Mon profil').split(' ')[0])}</b><span>${esc(orgName(S.org))}</span></div>
@@ -981,7 +982,7 @@ async function route(){
       prompt: () => pagePrompt(a), 'prompt-nouveau': () => pagePromptForm(null), 'prompt-modifier': () => pagePromptForm(a),
       'outil-nouveau': () => pageToolForm(null), 'outil-modifier': () => pageToolForm(a),
       echanges: () => pageChat(a || 'general'),
-      documents: pageDocs, assistant: pageAssistant,
+      documents: pageDocs, assistant: pageAssistant, fds: () => a ? pageFdsDetail(a) : pageFds(),
       recherche: () => pageSearch(decodeURIComponent(a || '')), reseau: () => pageNetGroup(a), confidentialite: pagePrivacy,
       communaute: pageCommunity, tableau: pageDashboard, admin: pageAdmin, profil: pageProfile
     };
@@ -1846,6 +1847,103 @@ function docUploadForm(){
   </form>`;
 }
 
+/* ================= Base FDS (fiches de données de sécurité) =================
+   Alimentée depuis PréventIA Protect (module Risque chimique, même compte).
+   Ici : consulter, vérifier, partager au réseau, repérer les FDS à revoir.
+   Seul le contenu des FDS est stocké : aucune donnée d'entreprise ni de salarié. */
+const PROTECT_CHIM = 'https://laurebonnefond.github.io/preventia-protect/modules/risques/chimique/index.html';
+const SGH = { SGH01:'Explosif', SGH02:'Inflammable', SGH03:'Comburant', SGH04:'Gaz sous pression', SGH05:'Corrosif', SGH06:'Toxique', SGH07:'Nocif / irritant', SGH08:'Danger pour la santé', SGH09:'Environnement' };
+const FDS_CMR = /^(H340|H341|H350|H351|H36[0-2])/;
+function fdsRevoir(f){
+  if (!f.date_revision) return 'date inconnue';
+  if (!f.format_878) return 'ancien format';
+  return (Date.now() - new Date(f.date_revision)) / 3.156e10 > 3 ? 'plus de 3 ans' : '';
+}
+function fdsStatut(f){
+  if (f.statut === 'obsolete') return badge('Obsolète','b-gray');
+  if (f.statut === 'verifiee') return f.visibilite === 'reseau' ? badge('✔ Vérifiée · réseau','b-green') : badge('✔ Vérifiée','b-green');
+  return badge('Brouillon','b-orange');
+}
+async function pageFds(){
+  if (S.demo) return `<div class="wrap page">${pbanner('documents','Base FDS','Fiches de données de sécurité','Non disponible en mode démonstration.')}</div>`;
+  let rows;
+  try { rows = (await sb.from('fds').select('id, org_id, visibilite, statut, nom_commercial, fournisseur, version, date_revision, format_878, cmr, pictogrammes, donnees, verifie_le').order('nom_commercial')).data || []; }
+  catch (e) { rows = null; }
+  if (!rows) return `<div class="wrap page">${pbanner('documents','Base FDS','Fiches de données de sécurité','')}<div class="note warn">Base FDS indisponible : vérifiez que le script <b>fds_schema</b> a été exécuté dans Supabase.</div></div>`;
+  CUR.fds = rows; F.fds ??= {}; CUR.after = renderFdsList;
+  const mine = rows.filter(f => f.org_id===S.org && f.statut!=='obsolete');
+  return `<div class="wrap page">
+    ${pbanner('documents','Base FDS · '+esc(orgName(S.org)),'Fiches de données de sécurité','Les FDS analysées dans PréventIA Protect, vérifiées par votre SPSTI et partagées avec le réseau. Le fournisseur reste la référence.', `<a class="btn btn-accent" href="${PROTECT_CHIM}" target="_blank" rel="noopener">${ic('plus')} Ajouter une FDS (PréventIA Protect)</a>`)}
+    <div class="grid g4" style="margin-bottom:22px">
+      ${kcard('folder','FDS de mon SPSTI', mine.length, mine.filter(f=>f.statut==='brouillon').length+' brouillon(s) à vérifier')}
+      ${kcard('shield','Vérifiées', mine.filter(f=>f.statut==='verifiee').length, 'par mon SPSTI', 'k-green')}
+      ${kcard('globe','Partagées par le réseau', rows.filter(f=>f.org_id!==S.org).length, 'autres SPSTI, vérifiées', 'k-violet')}
+      ${kcard('search','À revoir', mine.filter(fdsRevoir).length, 'plus de 3 ans, ancien format ou date inconnue', 'k-orange')}
+    </div>
+    <div class="toolbar" role="search"><input type="search" placeholder="Produit, fournisseur, mention H…" aria-label="Rechercher une FDS" data-filter="fds.q" value="${esc(F.fds.q||'')}">
+      <select aria-label="Filtre" data-filter="fds.scope"><option value="">Mon SPSTI + réseau</option>${[['org','Mon SPSTI'],['net','Partagées par le réseau'],['brouillon','Brouillons à vérifier'],['revoir','À revoir'],['cmr','Avec mention CMR'],['obsolete','Obsolètes']].map(([v,l])=>`<option value="${v}" ${F.fds.scope===v?'selected':''}>${l}</option>`).join('')}</select></div>
+    <div id="list"></div>
+    <div class="note" style="margin-top:24px">📄 Une FDS se demande au fournisseur, qui doit la fournir gratuitement (REACH art. 31). La base évite de ressaisir une FDS déjà analysée, et le contrôle des substances avec PubChem se fait depuis PréventIA Protect.</div></div>`;
+}
+function renderFdsList(){
+  const f = F.fds, q = (f.q||'').toLowerCase().trim();
+  const r = CUR.fds.filter(x => {
+    const h = x.donnees?.h || [];
+    if (q && !(x.nom_commercial+' '+(x.fournisseur||'')+' '+h.join(' ')).toLowerCase().includes(q)) return false;
+    if (f.scope==='obsolete') return x.statut==='obsolete';
+    if (x.statut==='obsolete') return false;
+    return !f.scope || (f.scope==='org' && x.org_id===S.org) || (f.scope==='net' && x.org_id!==S.org)
+      || (f.scope==='brouillon' && x.statut==='brouillon') || (f.scope==='revoir' && x.org_id===S.org && fdsRevoir(x))
+      || (f.scope==='cmr' && (x.cmr || h.some(c => FDS_CMR.test(c))));
+  });
+  $('#list').innerHTML = r.length ? `<div class="grid g3">${r.map(x => {
+    const h = x.donnees?.h || [], rv = fdsRevoir(x), cmr = x.cmr || h.some(c => FDS_CMR.test(c));
+    return `<a class="card item" href="#/fds/${x.id}">
+      <div class="badges">${fdsStatut(x)}${rv ? badge('⚠ '+rv,'b-orange') : ''}${cmr ? badge('CMR'+(x.cmr?' '+esc(x.cmr):''),'b-red') : ''}${x.org_id!==S.org ? badge(esc(orgName(x.org_id)),'b-line') : ''}</div>
+      <h3>${esc(x.nom_commercial)}</h3>
+      <p class="small muted" style="margin:0">${esc(x.fournisseur||'Fournisseur non renseigné')}${x.version?' · v'+esc(x.version):''}${x.date_revision?' · FDS du '+fmtDate(x.date_revision):''}</p>
+      <p class="small" style="margin:0">${(x.pictogrammes||[]).map(p=>esc(SGH[p]||p)).join(' · ') || '<span class="muted">Pas de pictogramme</span>'}</p>
+      ${h.length ? `<p class="small muted" style="margin:0">${h.slice(0,8).map(esc).join(' ')}${h.length>8?' …':''}</p>` : ''}</a>`; }).join('')}</div>`
+    : empty('Aucune FDS ne correspond.', `<a class="btn btn-accent" href="${PROTECT_CHIM}" target="_blank" rel="noopener">${ic('plus')} Ajouter une FDS depuis PréventIA Protect</a>`);
+}
+async function pageFdsDetail(id){
+  if (S.demo) return pageFds();
+  const { data:f, error } = await sb.from('fds').select('*').eq('id', id).maybeSingle();
+  if (error) throw error;
+  if (!f) return `<div class="wrap page">${empty('FDS introuvable ou non partagée avec votre SPSTI.', '<a class="btn btn-ghost" href="#/fds">Retour à la base FDS</a>')}</div>`;
+  const { data:compo } = await sb.from('fds_composition').select('conc_min, conc_max, substances(nom, cas, cmr_harmonise)').eq('fds_id', id);
+  const d = f.donnees || {}, fi = d.fiche || {}, v = d.vlep || {}, mine = f.org_id===S.org, rv = fdsRevoir(f);
+  const li = a => (a||[]).length ? `<ul>${a.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>` : '<p class="small muted">Non renseigné</p>';
+  const tx = (l, t) => t ? `<p><b>${l}</b><br>${esc(t)}</p>` : '';
+  const subs = (compo||[]).length ? compo.map(c => ({ nom:c.substances?.nom, cas:c.substances?.cas, conc: c.conc_min!=null ? (c.conc_min===c.conc_max ? c.conc_min+' %' : c.conc_min+' – '+c.conc_max+' %') : '' })) : (d.substances||[]).map(s => ({ nom:s.nom, cas:s.cas, conc:s.concentration }));
+  const vl = [['VLEP 8 h', v.vme_mg, v.vme_ppm], ['VLCT 15 min', v.vlct_mg, v.vlct_ppm]].filter(x => x[1]!=null || x[2]!=null);
+  return `<div class="wrap page">
+    <p><a href="#/fds" class="small">← Base FDS</a></p>
+    ${pbanner('documents', esc(f.fournisseur||'Fournisseur non renseigné')+(f.version?' · version '+esc(f.version):''), esc(f.nom_commercial), (f.date_revision?'FDS du '+fmtDate(f.date_revision):'Date de la FDS inconnue')+(mine?'':' · partagée par '+esc(orgName(f.org_id))))}
+    <div class="badges" style="margin-bottom:16px">${fdsStatut(f)}${rv?badge('⚠ À revoir : '+rv,'b-orange'):''}${f.extrait_par_ia?badge('Extraite par IA','b-line'):''}${f.statut==='verifiee'?badge('Vérifiée le '+fmtDate(f.verifie_le)+' par '+esc(f.verifie_par),'b-teal'):''}</div>
+    ${f.statut==='brouillon' ? `<div class="note warn" style="margin-bottom:16px">Brouillon : ces données ont été ${f.extrait_par_ia?'extraites par l\'IA':'saisies'} et doivent être comparées à la FDS du fournisseur avant toute utilisation.</div>` : ''}
+    <div class="grid g2">
+      <div class="card"><h3>Dangers</h3>
+        <p>${(f.pictogrammes||[]).map(p=>badge(esc(p)+' '+esc(SGH[p]||''),'b-red')).join(' ') || '<span class="muted">Aucun pictogramme</span>'} ${f.mention_avert?badge(esc(f.mention_avert)):''}</p>
+        <p><b>Mentions H / EUH</b><br>${(d.h||[]).map(c=>badge(esc(c)+(d.libelles?.[c]?' '+esc(d.libelles[c]):''), FDS_CMR.test(c)?'b-red':'b-gray')).join(' ') || '<span class="muted">Aucune</span>'}</p>
+        ${f.cmr?`<p>${badge('CMR catégorie '+esc(f.cmr),'b-red')}</p>`:''}
+        <p class="small muted">${[f.point_eclair_c!=null&&'Point éclair '+f.point_eclair_c+' °C', f.teb_c!=null&&'Ébullition '+f.teb_c+' °C', f.ph!=null&&'pH '+f.ph, f.etat_physique].filter(Boolean).map(esc).join(' · ')}</p></div>
+      <div class="card"><h3>Composition (rubrique 3)</h3>${subs.length ? `<ul>${subs.map(s=>`<li><b>${esc(s.nom||'')}</b>${s.cas?' · CAS '+esc(s.cas):''}${s.conc?' · '+esc(s.conc):''}</li>`).join('')}</ul>` : '<p class="small muted">Non renseignée</p>'}
+        <h3 style="margin-top:14px">Valeurs limites (rubrique 8)</h3>${vl.length ? `<ul>${vl.map(x=>`<li>${x[0]} : ${[x[1]!=null&&String(x[1]).replace('.',',')+' mg/m³', x[2]!=null&&String(x[2]).replace('.',',')+' ppm'].filter(Boolean).join(' · ')}</li>`).join('')}</ul>` : '<p class="small muted">Aucune renseignée</p>'}</div>
+      <div class="card"><h3>Protection</h3><p><b>EPI</b></p>${li(fi.epi)}<p><b>EPC</b></p>${li(fi.epc)}</div>
+      <div class="card"><h3>Conduite à tenir</h3>${tx('Inhalation',fi.inhalation)}${tx('Contact cutané',fi.peau)}${tx('Projection oculaire',fi.yeux)}${tx('Ingestion',fi.ingestion)}${tx('Incendie',fi.incendie)}${tx('Déversement',fi.deversement)}${tx('Stockage',fi.stockage)}${tx('Incompatibilités',fi.incompat)}${!['inhalation','peau','yeux','ingestion','incendie','deversement','stockage','incompat'].some(k=>fi[k])?'<p class="small muted">Non renseignée</p>':''}</div>
+    </div>
+    ${f.lien_fds ? `<p style="margin-top:16px"><a class="btn btn-ghost sm" href="${esc(f.lien_fds)}" target="_blank" rel="noopener">📄 FDS du fournisseur</a></p>` : ''}
+    ${mine ? `<div class="card" style="margin-top:16px"><h3>Gérer</h3>
+      ${f.statut==='brouillon' ? `<form data-form="fdsVerif" data-id="${f.id}" class="row2" style="align-items:end"><div class="field"><label for="fv-p">Vérifié par</label><input id="fv-p" type="text" name="par" required value="${esc(S.profile?.full_name||'')}"></div><div class="field"><label for="fv-d">Vérifiée sur la FDS le</label><input id="fv-d" type="date" name="le" required value="${new Date().toISOString().slice(0,10)}"></div><div><button class="btn btn-primary" type="submit">✔ Marquer vérifiée</button></div></form>
+        <p class="small muted">Comparez chaque champ à la FDS du fournisseur avant de valider : une FDS vérifiée ne se modifie plus.</p>` : ''}
+      <div class="chips" style="margin-top:10px">
+        ${f.statut==='verifiee' && f.visibilite==='spsti' ? `<button class="btn btn-accent sm" data-act="fdsShare" data-id="${f.id}">🌐 Partager avec le réseau</button>` : ''}
+        ${f.statut==='verifiee' ? `<button class="btn btn-ghost sm" data-act="fdsObsolete" data-id="${f.id}">Rendre obsolète (nouvelle version reçue)</button>` : ''}
+        ${f.statut!=='verifiee' ? `<button class="btn btn-danger sm" data-act="fdsDelete" data-id="${f.id}">Supprimer</button>` : ''}</div></div>` : ''}
+  </div>`;
+}
+
 /* ================= Assistant IA (en construction) ================= */
 async function pageAssistant(){
   const step = (n, t, d, st, tone) => `<div class="kcard ${tone}"><div class="kic" style="font-family:var(--serif);font-size:1.3rem">${n}</div><div class="kl">${st}</div><h3 style="margin:6px 0 6px">${t}</h3><p class="small muted" style="margin:0">${d}</p></div>`;
@@ -2166,6 +2264,7 @@ const FORMS = {
   async addMember(d, f){ await api.insert('team_members', { team_id:f.dataset.id, user_id:d.user_id, role:'membre' }); toast('Collègue ajouté·e à l\'équipe'); route(); },
   async challenge(d){ await api.insert('challenges', clean({ ...d, org_id:S.org })); toast('Défi lancé 🎯'); route(); },
   async profile(d){ await api.update('profiles', { id:S.user.id }, clean(d)); await loadContext(); toast('Profil enregistré'); route(); },
+  async fdsVerif(d, f){ await api.update('fds', { id:f.dataset.id }, { statut:'verifiee', verifie_par:d.par.trim(), verifie_le:d.le }); toast('FDS marquée vérifiée ✔'); route(); },
   async newOrg(d){ await api.rpc('create_organization', { p_name:d.name, p_short:d.short }); await loadContext(); toast('SPSTI créé. Basculez dessus depuis votre profil pour obtenir son code.'); route(); },
   async newPassword(d){ const { error } = await sb.auth.updateUser({ password:d.password }); if (error) throw error; closeModal(); toast('Mot de passe modifié'); }
 };
@@ -2178,6 +2277,9 @@ const ACTS = {
   },
   closeModal(){ closeModal(); },
   docUpload(){ modal(docUploadForm()); },
+  async fdsShare(el){ if (!await confirmBox('Partager cette FDS vérifiée avec tous les SPSTI du réseau ? Seul le contenu de la FDS est partagé.','Partager')) return; await api.update('fds', { id:el.dataset.id }, { visibilite:'reseau' }); toast('FDS partagée avec le réseau 🌐'); route(); },
+  async fdsObsolete(el){ if (!await confirmBox('Rendre cette FDS obsolète ? Elle ne sera plus proposée, ni dans votre SPSTI ni dans le réseau.','Rendre obsolète')) return; await api.update('fds', { id:el.dataset.id }, { statut:'obsolete', visibilite:'spsti' }); toast('FDS rendue obsolète'); route(); },
+  async fdsDelete(el){ if (!await confirmBox('Supprimer ce brouillon de FDS ?','Supprimer')) return; await api.del('fds', { id:el.dataset.id }); toast('FDS supprimée'); go('#/fds'); },
   docCat(el){ F.docs.cat = el.dataset.v; route(); },
   async docOpen(el){
     const d = CUR.docs.find(x => x.id===el.dataset.id); if (!d) return;
@@ -2294,7 +2396,7 @@ document.addEventListener('input', e => {
   if (e.target.closest('form[data-form=idea]') && ['title','problem'].includes(e.target.name)) { clearTimeout(CUR.simT); CUR.simT = setTimeout(renderSimilar, 350); }
   const k = e.target.dataset.filter; if (!k) return;
   const [g, field] = k.split('.'); F[g][field] = e.target.value;
-  ({ ideas:renderIdeaList, exps:renderExpList, prompts:renderPromptList, docs:renderDocList })[g]?.();
+  ({ ideas:renderIdeaList, exps:renderExpList, prompts:renderPromptList, docs:renderDocList, fds:renderFdsList })[g]?.();
 });
 document.addEventListener('change', async e => {
   const t = e.target;
