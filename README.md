@@ -8,6 +8,25 @@
 🔗 Site : <https://laurebonnefond.github.io/laurebonnefond-preventia-reseau/>
 🧪 Démo sans compte : bouton **« Explorer la démo »** (données fictives, rien n'est enregistré)
 
+### Dans l'écosystème PréventIA
+
+PréventIA Réseau est l'une des trois plateformes PréventIA, au même niveau et reliées entre elles. Elle partage avec **PréventIA Protect** le même compte et la même base de données.
+
+```mermaid
+flowchart LR
+    LAB["PréventIA-LaB<br/>outils de terrain<br/>et pédagogie"]
+    PROTECT["PréventIA Protect<br/>modules HSE et santé<br/>pour les entreprises"]
+    BASE[("Socle commun<br/>Supabase UE<br/>compte unique · base FDS<br/>enquêtes anonymes")]
+    RESEAU["PréventIA Réseau<br/>innovation IA<br/>entre SPSTI"]
+    LAB -.-> PROTECT
+    PROTECT <--> BASE
+    BASE <--> RESEAU
+    RESEAU -.-> LAB
+```
+
+- **Un seul compte** : une personne connectée sur PréventIA Réseau l'est aussi sur PréventIA Protect, et inversement (les deux sites sont servis depuis `laurebonnefond.github.io`). Le SPSTI choisi est le même.
+- **La base FDS** se remplit depuis le module Risque chimique de PréventIA Protect et se consulte, se vérifie et se partage ici.
+
 ---
 
 ## Sommaire
@@ -31,8 +50,9 @@
 | 💡 **Idées** | Déposer une problématique terrain en 2 minutes, sans vocabulaire technique ; soutiens « ça m'intéresse » / « je veux tester » ; commentaires |
 | 🧪 **Expérimentations** | Fiche projet en 12 points (hypothèse, protocole, résultats, limites, décision), journal des testeurs, indicateurs estimés **et** mesurés |
 | 🧰 **Boîte à outils** | Bibliothèque de prompts copiables, catalogue d'outils IA avec niveau de maturité |
-| 💬 **Échanges & équipes** | Fil général du SPSTI, équipes **ouvertes ou sur invitation** auxquelles on rattache idées, tests et documents, **messages privés 1:1**, temps réel |
+| 💬 **Échanges & équipes** | Fil général du SPSTI, équipes **ouvertes ou sur invitation** auxquelles on rattache idées, tests et documents, **messages privés 1:1** en temps réel, avec pastille de messages non lus et **avertissement par e-mail** (sans le contenu, désactivable) |
 | 📁 **Base documentaire** | Dépôt de procédures, modèles vierges et supports, protégés par SPSTI ; partage réseau validé |
+| 🧪 **Base FDS** | Fiches de données de sécurité analysées dans PréventIA Protect : consulter, **marquer vérifiée**, **partager au réseau**, repérer celles à revoir (plus de 3 ans, ancien format, date inconnue) et celles avec une mention CMR. Seul le contenu des FDS est stocké, jamais de donnée d'entreprise ni de salarié |
 | 👥 **Communauté** | Appels à volontaires, défis collectifs, annuaire du SPSTI, **groupes thématiques inter-SPSTI**, vue d'ensemble du réseau |
 | 🔁 **Reproduire** | Reprendre dans son SPSTI le cadre d'un test partagé par un autre ; le SPSTI d'origine voit combien de fois il a été repris |
 | 🔎 **Recherche** | Une seule recherche sur les idées, tests, prompts et documents ; idées proches signalées pendant la saisie |
@@ -61,26 +81,35 @@ C'est un simple indicateur de progression, qui n'est pas cliquable et ne produit
 
 ## Architecture
 
-```
-┌──────────────── GitHub Pages ────────────────┐
-│  index.html  (application monofichier)       │
-│  HTML + CSS + JavaScript, sans build         │
-│  assets/  (photos, polices, supabase-js)     │
-└──────────────────────┬───────────────────────┘
-                       │ supabase-js v2 (clé publique)
-                       ▼
-┌──────── Supabase — région eu-west-1 (Irlande, UE) ────────┐
-│  Auth        comptes, confirmation e-mail, mot de passe   │
-│  Postgres    données + Row Level Security (RLS)           │
-│  Realtime    messages d'équipe et messages privés         │
-│  Storage     compartiment privé « documents »             │
-└───────────────────────────────────────────────────────────┘
+```mermaid
+flowchart LR
+    U["Membre du SPSTI<br/>navigateur"]
+    GH["GitHub Pages<br/>index.html monofichier<br/>assets/ : photos, polices,<br/>supabase-js figé"]
+    subgraph SB["Supabase · région UE (Irlande)"]
+        direction TB
+        AUTH["Auth<br/>comptes, confirmation e-mail"]
+        PG[("Postgres + RLS<br/>données cloisonnées par SPSTI")]
+        RT["Realtime<br/>fils d'équipe, messages privés"]
+        ST["Storage<br/>compartiment privé « documents »"]
+        EF["Edge Function notif-dm<br/>e-mail d'avertissement"]
+    end
+    BR["Brevo (France, UE)<br/>envoi de l'e-mail"]
+    PP["PréventIA Protect<br/>même compte, même base"]
+    U --> GH
+    GH -- "supabase-js · clé publique" --> AUTH
+    GH --> PG
+    GH --> RT
+    GH --> ST
+    PG -- "nouveau message privé (pg_net)" --> EF
+    EF -- "nom de l'expéditeur seulement" --> BR
+    PP -- "FDS analysées" --> PG
 ```
 
 - **Monofichier** : toute l'application tient dans `index.html` (routeur par `#/…`, rendu par modèles littéraux).
 - **Clé publique uniquement** côté navigateur : la sécurité repose entièrement sur les politiques **RLS** en base.
 - **Mode démo** : une couche `api` simule Supabase en mémoire avec des données fictives.
-- **Aucun appel à un tiers** : les polices et la librairie Supabase sont servies depuis `assets/`. Aucun service d'IA externe n'est appelé.
+- **Aucun appel à un tiers depuis le navigateur** : les polices et la librairie Supabase sont servies depuis `assets/`. Aucun service d'IA externe n'est appelé par le portail.
+- **E-mails d'avertissement** : envoyés côté serveur (fonction `notif-dm`, via Brevo). Ils ne contiennent jamais le texte du message ; un seul e-mail par expéditeur tant que ses messages ne sont pas lus.
 
 ---
 
@@ -95,6 +124,8 @@ Exécuter ensuite, depuis *Supabase → SQL Editor*, les scripts du dossier `sup
 | Script | Ajoute |
 |---|---|
 | `2026-11-16_ameliorations_audit.sql` | Équipes sur invitation, rattachement à une équipe, reproduction d'un test, statut d'idée synchronisé, groupes inter-SPSTI, signalements, domaines e-mail autorisés, retour « a marché » sur les prompts, vue réseau, suppression de compte |
+| `fds_schema` *(appliqué directement dans Supabase, nov. 2026)* | Table `fds` (base FDS partagée avec PréventIA Protect), statuts brouillon / vérifiée / obsolète, visibilité SPSTI ou réseau |
+| `notif_email_messages_prives` *(appliqué directement, 27/11/2026)* | Colonne `profiles.notif_email`, colonne anti-doublon `direct_messages.notif_le`, déclencheur `dm_notif_email` (pg_net) vers la fonction `notif-dm` |
 
 Les scripts sont **ré-exécutables** sans risque : ils utilisent `if not exists` et suppriment chaque politique avant de la recréer.
 
@@ -114,12 +145,26 @@ const CONFIG = {
 
 Dans *Supabase → Authentication → URL Configuration*, ajouter l'URL GitHub Pages aux **Redirect URLs** (liens de confirmation et de réinitialisation du mot de passe).
 
-### 3. Déploiement
+### 3. E-mails d'avertissement (facultatif)
+
+1. Créer un compte gratuit sur **Brevo** (300 e-mails par jour), puis ajouter et confirmer une adresse d'expéditeur professionnelle.
+2. Créer une clé API Brevo et la saisir dans *Supabase → Edge Functions → Secrets* :
+   - `BREVO_API_KEY` : la clé ;
+   - `BREVO_SENDER` : l'adresse d'expéditeur confirmée.
+3. Pour éviter les indésirables : authentifier le domaine du SPSTI chez Brevo (enregistrements DNS, à faire par le service informatique).
+
+Sans ces secrets, la fonction ne fait rien et l'envoi des messages n'est jamais bloqué.
+
+### 4. Garder la base active
+
+L'offre gratuite de Supabase met le projet en pause après environ 7 jours sans activité. Le workflow `.github/workflows/garder-supabase-actif.yml` envoie une requête de lecture tous les 3 jours. À configurer une fois dans *Settings → Secrets and variables → Actions* : `SUPABASE_URL` et `SUPABASE_ANON_KEY` (clé publique).
+
+### 5. Déploiement
 
 1. Pousser `index.html` et le dossier `assets/` sur la branche `main`.
 2. *Settings → Pages → Deploy from a branch → main / root*.
 
-### 4. Premier SPSTI
+### 6. Premier SPSTI
 
 1. Créer un compte, puis devenir administrateur réseau (table `network_admins`).
 2. *Administration → Ajouter un SPSTI* : le code d'adhésion est généré.
@@ -166,7 +211,8 @@ Dans une équipe, son **référent** (le créateur, par défaut) peut ajouter de
 | Fil d'équipe | Membres de l'équipe. Équipe **ouverte** : tout membre du SPSTI peut la rejoindre et lire l'historique. Équipe **sur invitation** : seul le référent ajoute des membres |
 | Groupe thématique du réseau | Tous les SPSTI ; l'auteur apparaît comme « Membre — nom du SPSTI » hors de son service |
 | Signalement | Son auteur, les animateurs et administrateurs de son SPSTI |
-| Message privé | **Expéditeur et destinataire uniquement**, y compris vis-à-vis de l'admin |
+| Message privé | **Expéditeur et destinataire uniquement**, y compris vis-à-vis de l'admin. L'e-mail d'avertissement indique seulement le nom de l'expéditeur |
+| FDS | Brouillons et FDS vérifiées : membres du SPSTI. FDS partagées au réseau : tous les SPSTI |
 | Fichier déposé | Uniquement si sa fiche est visible ; lien de téléchargement valable 2 minutes |
 
 ### Garde-fous côté base
@@ -178,6 +224,7 @@ Dans une équipe, son **référent** (le créateur, par défaut) peut ajouter de
 ### Hébergement et RGPD
 
 - Toutes les données sont hébergées dans l'**UE (Irlande)** par Supabase.
+- Sous-traitants : Supabase (données, UE), GitHub Pages (pages du site, aucune donnée), Brevo (e-mails d'avertissement, France : adresse e-mail du destinataire et nom de l'expéditeur seulement).
 - Aucune donnée de santé ne doit être saisie : le portail **n'est pas** un outil de suivi individuel des salariés.
 - La charte d'usage figure dans *Mon profil*, la page *Confidentialité* dans le pied de page. Chaque membre peut télécharger ses données et supprimer son compte.
 - Restent à faire avec le DPO : responsable de traitement, contact et durée de conservation (`CONFIG.legal`), registre des traitements, convention entre SPSTI.
@@ -212,6 +259,7 @@ Les images actuelles ont été **générées par IA** : on n'y voit aucune perso
 │   ├── fonts/               Polices DM Sans et DM Serif Display (licence OFL)
 │   └── vendor/              supabase-js, version figée
 ├── supabase/migrations/     Scripts SQL à exécuter dans l'ordre
+├── .github/workflows/       garder-supabase-actif.yml (évite la mise en pause)
 └── README.md
 ```
 
@@ -223,6 +271,8 @@ Les images actuelles ont été **générées par IA** : on n'y voit aucune perso
 - [x] Interface V2 : barre latérale, bandeaux photo, tableau de bord personnel, parcours IA
 - [x] Échanges : fil général, équipes, messages privés en temps réel
 - [x] Base documentaire protégée par SPSTI
+- [x] Base FDS partagée avec PréventIA Protect (compte commun)
+- [x] Messages privés : pastille non lus et avertissement par e-mail
 - [ ] **Assistant IA**, à cadrer avant ouverture :
   0. **Premiers usages visés** (plus légers qu'un chatbot) : aide à formuler une idée, synthèse du journal d'un test en bilan ;
   1. **Fournisseur** : Mistral (français, hébergement UE) ou Claude, avec une clé API cachée dans une Supabase Edge Function ;
@@ -230,7 +280,7 @@ Les images actuelles ont été **générées par IA** : on n'y voit aucune perso
   3. **Garde-fous** : filtre des données sensibles avant envoi, mention « vous échangez avec une IA » (AI Act, art. 50), validation DPO.
 - [x] Groupes thématiques inter-SPSTI, reproduction d'un test, vue d'ensemble du réseau
 - [x] Équipes sur invitation, signalements, détection de données nominatives, export et suppression de compte
-- [ ] Projet Supabase dédié au portail (il est aujourd'hui partagé avec d'autres applications) et retrait des SPSTI de test
+- [ ] Retrait des SPSTI de test (le projet Supabase reste volontairement partagé avec PréventIA Protect : compte et base FDS communs)
 - [ ] Export du schéma complet dans `supabase/schema.sql`
 - [ ] Passage à l'offre Supabase Pro dès l'ouverture à d'autres SPSTI (l'offre gratuite plafonne à 1 Go de fichiers)
 
