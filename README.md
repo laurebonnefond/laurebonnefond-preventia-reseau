@@ -58,7 +58,7 @@ flowchart LR
 | 🔎 **Recherche** | Une seule recherche sur les idées, tests, prompts et documents ; idées proches signalées pendant la saisie |
 | 📊 **Tableau de bord du SPSTI** | Indicateurs collectifs (jamais de classement individuel), entonnoir des idées, temps gagné |
 | 🛡️ **Administration** | Code d'adhésion, rôles, validation des partages réseau, journal des actions sensibles |
-| 🤖 **Assistant IA** | *En construction* : cadrage en cours (voir [feuille de route](#feuille-de-route)) |
+| 🤖 **Assistant IA** | **Formuler une idée** (Mistral, UE) : l'assistant propose titre, problème, piste et questions, puis pré-remplit la Boîte à idées. **Question réglementaire** générale (Claude), avec les textes à vérifier. Mention « vous échangez avec une IA », contrôle 🔴 avant envoi, rien n'est enregistré |
 
 ### Le cycle d'une idée
 
@@ -92,7 +92,10 @@ flowchart LR
         RT["Realtime<br/>fils d'équipe, messages privés"]
         ST["Storage<br/>compartiment privé « documents »"]
         EF["Edge Function notif-dm<br/>e-mail d'avertissement"]
+        IA["Edge Function ia<br/>passerelle IA commune"]
     end
+    MI["Mistral (UE)<br/>formuler une idée"]
+    CL["Claude<br/>question réglementaire"]
     BR["Brevo (France, UE)<br/>envoi de l'e-mail"]
     PP["PréventIA Protect<br/>même compte, même base"]
     U --> GH
@@ -103,12 +106,16 @@ flowchart LR
     PG -- "nouveau message privé (pg_net)" --> EF
     EF -- "nom de l'expéditeur seulement" --> BR
     PP -- "FDS analysées" --> PG
+    GH -- "Assistant IA · jeton de session" --> IA
+    IA -- "sensible" --> MI
+    IA -- "technique" --> CL
 ```
 
 - **Monofichier** : toute l'application tient dans `index.html` (routeur par `#/…`, rendu par modèles littéraux).
 - **Clé publique uniquement** côté navigateur : la sécurité repose entièrement sur les politiques **RLS** en base.
 - **Mode démo** : une couche `api` simule Supabase en mémoire avec des données fictives.
-- **Aucun appel à un tiers depuis le navigateur** : les polices et la librairie Supabase sont servies depuis `assets/`. Aucun service d'IA externe n'est appelé par le portail.
+- **Aucun appel à un tiers depuis le navigateur** : les polices et la librairie Supabase sont servies depuis `assets/`.
+- **Assistant IA** : il passe par la passerelle IA commune à PréventIA Protect (fonction serveur `ia`, Supabase UE), qui garde les clés, vérifie la connexion, applique les quotas, masque les données personnelles et tient un journal sans contenu. Formuler une idée → question « sensible » → **Mistral (UE)** ; question réglementaire → question « technique » → **Claude**.
 - **E-mails d'avertissement** : envoyés côté serveur (fonction `notif-dm`, via Brevo). Ils ne contiennent jamais le texte du message ; un seul e-mail par expéditeur tant que ses messages ne sont pas lus.
 
 ---
@@ -224,7 +231,7 @@ Dans une équipe, son **référent** (le créateur, par défaut) peut ajouter de
 ### Hébergement et RGPD
 
 - Toutes les données sont hébergées dans l'**UE (Irlande)** par Supabase.
-- Sous-traitants : Supabase (données, UE), GitHub Pages (pages du site, aucune donnée), Brevo (e-mails d'avertissement, France : adresse e-mail du destinataire et nom de l'expéditeur seulement).
+- Sous-traitants : Supabase (données, UE), GitHub Pages (pages du site, aucune donnée), Brevo (e-mails d'avertissement, France : adresse e-mail du destinataire et nom de l'expéditeur seulement), Mistral AI (UE) et Anthropic (États-Unis) pour l'Assistant IA, sans donnée de santé ni nominative, rien n'étant conservé.
 - Aucune donnée de santé ne doit être saisie : le portail **n'est pas** un outil de suivi individuel des salariés.
 - La charte d'usage figure dans *Mon profil*, la page *Confidentialité* dans le pied de page. Chaque membre peut télécharger ses données et supprimer son compte.
 - Restent à faire avec le DPO : responsable de traitement, contact et durée de conservation (`CONFIG.legal`), registre des traitements, convention entre SPSTI.
@@ -273,11 +280,8 @@ Les images actuelles ont été **générées par IA** : on n'y voit aucune perso
 - [x] Base documentaire protégée par SPSTI
 - [x] Base FDS partagée avec PréventIA Protect (compte commun)
 - [x] Messages privés : pastille non lus et avertissement par e-mail
-- [ ] **Assistant IA**, à cadrer avant ouverture :
-  0. **Premiers usages visés** (plus légers qu'un chatbot) : aide à formuler une idée, synthèse du journal d'un test en bilan ;
-  1. **Fournisseur** : Mistral (français, hébergement UE) ou Claude, avec une clé API cachée dans une Supabase Edge Function ;
-  2. **Périmètre** : des réponses fondées sur la base documentaire, sources citées ;
-  3. **Garde-fous** : filtre des données sensibles avant envoi, mention « vous échangez avec une IA » (AI Act, art. 50), validation DPO.
+- [x] **Assistant IA** (V1) : formuler une idée (Mistral, UE) et question réglementaire générale (Claude), via la passerelle IA commune
+- [ ] Assistant IA (V2) : réponses fondées sur la base documentaire du SPSTI, avec les sources citées ; validation DPO
 - [x] Groupes thématiques inter-SPSTI, reproduction d'un test, vue d'ensemble du réseau
 - [x] Équipes sur invitation, signalements, détection de données nominatives, export et suppression de compte
 - [ ] Retrait des SPSTI de test (le projet Supabase reste volontairement partagé avec PréventIA Protect : compte et base FDS communs)

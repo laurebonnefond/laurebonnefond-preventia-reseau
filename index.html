@@ -930,7 +930,7 @@ function renderShell(page){
   document.body.classList.toggle('shell', logged);
   document.body.classList.remove('side-open');
   const cur = PAGE_ALIAS[page] ?? page;
-  const navA = (h) => { const [i,l] = PAGES[h]; return `<a class="nav" href="#/${h}" ${cur===h?'aria-current="page"':''}>${ic(i)}<span>${l}</span>${h==='echanges' && CUR.unread ? `<span class="pill" title="Messages privés non lus">${CUR.unread}</span>` : ''}${h==='assistant' ? '<span class="pill" style="background:oklch(1 0 0 / .15);color:#fff;font-weight:600">bientôt</span>' : ''}</a>`; };
+  const navA = (h) => { const [i,l] = PAGES[h]; return `<a class="nav" href="#/${h}" ${cur===h?'aria-current="page"':''}>${ic(i)}<span>${l}</span>${h==='echanges' && CUR.unread ? `<span class="pill" title="Messages privés non lus">${CUR.unread}</span>` : ''}</a>`; };
   $('#side').innerHTML = logged ? `
     <a href="#/" class="brand" aria-label="PréventIA Réseau, accueil">${logo(32)}<span>PréventIA <b>Réseau</b></span></a>
     ${navA('')}
@@ -1944,29 +1944,85 @@ async function pageFdsDetail(id){
   </div>`;
 }
 
-/* ================= Assistant IA (en construction) ================= */
+/* ================= Assistant IA =================
+   Passe par la passerelle IA commune (fonction serveur Supabase « ia », UE) :
+   - Formuler une idée     → question « sensible »  → Mistral (UE)
+   - Question réglementaire → question « technique » → Claude
+   La clé des IA reste sur le serveur ; textes masqués côté serveur ; rien n'est conservé
+   (seul un journal sans contenu compte les appels). Mention AI Act, art. 50. */
+const ASST = {
+  idee: { label:'Formuler une idée', four:'Mistral · UE', usage:'reseau/idee', sens:'sensible', max:800,
+    ph:"Décrivez en quelques phrases ce qui vous fait perdre du temps ou ce qui pourrait être plus simple. Ex. : « Je recopie à la main les mêmes conseils de prévention dans chaque compte rendu de visite. »",
+    sys:`Tu aides un professionnel d'un service de prévention et de santé au travail (SPSTI) à formuler une idée pour la Boîte à idées de PréventIA Réseau.
+À partir de sa description, réponds UNIQUEMENT avec un objet JSON valide, sans texte autour :
+{"titre":"… (90 caractères maximum, commence par un verbe d'action)","probleme":"… (3 à 5 phrases concrètes : la tâche, ce qui fait perdre du temps, qui est concerné)","solution":"… (une piste possible ; l'IA n'est qu'un moyen, une solution sans IA est acceptable)","questions":["2 ou 3 questions pour préciser l'idée"],"alerte":"… (si la description contient une donnée de santé, un nom de salarié ou d'adhérent, explique-le en une phrase ; sinon chaîne vide)"}
+Règles : français simple, aucun chiffre inventé, aucun nom de personne, d'entreprise adhérente ou de salarié dans ta réponse.` },
+  regl: { label:'Question réglementaire', four:'Claude', usage:'reseau/reglementaire', sens:'technique', max:1400,
+    ph:"Posez une question générale de santé au travail. Ex. : « Quelle est la périodicité du suivi individuel renforcé pour un salarié exposé à l'amiante ? »",
+    sys:`Tu es l'assistant réglementaire de PréventIA Réseau, pour les professionnels des SPSTI (médecins du travail, infirmiers en santé au travail, IPRP, assistants).
+Réponds en français, de façon concise et structurée (listes courtes).
+Cite les textes précis (articles du Code du travail, décrets, arrêtés, brochures INRS avec leur référence ED) uniquement si tu en es sûr ; sinon, dis-le clairement.
+Tes connaissances peuvent être dépassées : invite toujours à vérifier sur Légifrance ou auprès de l'INRS.
+Tu ne donnes pas d'avis sur le cas individuel d'un salarié et tu ne traites aucune donnée de santé ni nominative : si on t'en fournit, rappelle cette règle sans exploiter ces informations.
+Termine toujours par une ligne « À vérifier : » suivie des sources à consulter.` }
+};
+const asstState = () => (CUR.asst ||= { mode:'idee', hist:{ idee:[], regl:[] }, busy:false });
+const asstFmt = t => nl(t).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+function asstJSON(t){ try { const m = String(t).match(/\{[\s\S]*\}/); return m ? JSON.parse(m[0]) : null; } catch { return null; } }
+
+async function iaAppel(mode, messages){
+  const m = ASST[mode];
+  const { data:{ session } } = await sb.auth.getSession();
+  if (!session) throw new Error('Connectez-vous pour utiliser l\'assistant.');
+  const r = await fetch(CONFIG.url + '/functions/v1/ia', { method:'POST',
+    headers:{ 'Content-Type':'application/json', apikey:CONFIG.key, Authorization:'Bearer ' + session.access_token },
+    body: JSON.stringify({ usage:m.usage, sensibilite:m.sens, body:{ system:m.sys, max_tokens:m.max, temperature:0.3, messages } }) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j?.error?.message || 'Assistant indisponible pour le moment.');
+  return (j.content || []).map(c => c.text || '').join('\n').trim();
+}
+
+function asstMsgHtml(msg, mode){
+  if (msg.role === 'user') return `<div class="msg me"><span class="avatar" style="width:32px;height:32px;font-size:.72rem">${esc(initials(S.profile?.full_name))}</span><div class="bubble"><div class="mh"><b>Moi</b></div>${nl(msg.content)}</div></div>`;
+  let body = asstFmt(msg.content);
+  if (mode === 'idee') {
+    const o = asstJSON(msg.content);
+    if (o && o.titre) {
+      body = `${o.alerte ? `<div class="note warn" style="margin:0 0 10px">🔴 ${esc(o.alerte)}</div>` : ''}
+        <div><b>Titre</b><br>${esc(o.titre)}</div><div style="margin-top:8px"><b>Problème</b><br>${nl(o.probleme||'')}</div>
+        ${o.solution ? `<div style="margin-top:8px"><b>Piste de solution</b><br>${nl(o.solution)}</div>` : ''}
+        ${(o.questions||[]).length ? `<div style="margin-top:8px"><b>Pour préciser</b><ul style="margin:4px 0 0;padding-left:18px">${o.questions.map(q => `<li>${esc(q)}</li>`).join('')}</ul></div>` : ''}
+        <div style="margin-top:12px"><button class="btn btn-accent sm" data-act="asstIdea" data-i="${msg.i}">${ic('idea')} Créer cette idée</button> <span class="small muted">Vous pourrez tout modifier avant de publier.</span></div>`;
+    }
+  }
+  return `<div class="msg"><span class="avatar" style="width:32px;height:32px;background:var(--teal-soft)">${ic('bot')}</span><div class="bubble"><div class="mh"><b>Assistant</b> · ${esc(ASST[mode].four)}</div>${body}</div></div>`;
+}
+function renderAsst(){
+  const st = asstState(), h = st.hist[st.mode], th = $('#asstThread'); if (!th) return;
+  h.forEach((m, i) => m.i = i);
+  th.innerHTML = h.length ? h.map(m => asstMsgHtml(m, st.mode)).join('') + (st.busy ? `<div class="msg"><span class="avatar" style="width:32px;height:32px;background:var(--teal-soft)">${ic('bot')}</span><div class="bubble"><span class="muted">L'assistant réfléchit…</span></div></div>` : '')
+    : `<div class="empty"><p class="muted">${esc(ASST[st.mode].ph)}</p></div>`;
+  th.scrollTop = th.scrollHeight;
+}
+
 async function pageAssistant(){
-  const step = (n, t, d, st, tone) => `<div class="kcard ${tone}"><div class="kic" style="font-family:var(--serif);font-size:1.3rem">${n}</div><div class="kl">${st}</div><h3 style="margin:6px 0 6px">${t}</h3><p class="small muted" style="margin:0">${d}</p></div>`;
+  const st = asstState(), m = ASST[st.mode];
+  const tab = k => `<button class="btn ${st.mode===k?'btn-primary':'btn-ghost'} sm" data-act="asstMode" data-m="${k}" aria-pressed="${st.mode===k}">${k==='idee'?ic('idea'):ic('prompt')} ${ASST[k].label} <span class="badge ${k==='idee'?'b-teal':'b-gray'}" style="margin-left:4px">${ASST[k].four}</span></button>`;
+  setTimeout(renderAsst, 0);
   return `<div class="wrap page">
-    ${pbanner('assistant','En construction','Assistant IA du réseau','Un assistant qui répond à partir de vos documents validés, sans jamais recevoir de donnée de santé ni nominative.', `<span class="btn btn-ghost" style="cursor:default">🚧 Ouverture après validation DPO</span>`)}
-    ${sh('Les 3 éléments à cadrer avant l\'ouverture')}
-    <div class="grid g3">
-      ${step(1,'Le fournisseur','Mistral (français, hébergement UE) ou Claude. Clé API cachée côté serveur (Supabase Edge Function), jamais dans la page. Contrat et durée de conservation validés avec le DPO.','À décider','k-orange')}
-      ${step(2,'Le périmètre','Réponses fondées sur la base documentaire du SPSTI (charte, procédures, prompts validés), avec les sources citées. Pas un assistant généraliste.','Base documentaire prête','k-green')}
-      ${step(3,'Les garde-fous','Filtre bloquant les données sensibles avant envoi (n° de sécurité sociale, termes médicaux nominatifs…), rappel du feu tricolore, mention claire « vous échangez avec une IA » (AI Act, art. 50).','Conçu','')}
-    </div>
-    ${sh('Aperçu de l\'interface')}
-    <div class="chat" style="grid-template-columns:1fr;min-height:0;opacity:.75" aria-hidden="true">
+    ${pbanner('assistant','Assistant IA','Assistant IA du réseau','Deux usages pour commencer : formuler une idée pour la Boîte à idées, et poser une question réglementaire générale.', '')}
+    <div class="note" style="margin-bottom:18px">🤖 <b>Vous échangez avec une intelligence artificielle</b> (AI Act, art. 50) : les réponses peuvent contenir des erreurs et sont à vérifier. 🔴 Jamais de donnée de santé, de nom de salarié ou d'adhérent. Les conversations ne sont pas enregistrées.</div>
+    <div class="chips" style="margin-bottom:14px" role="tablist">${tab('idee')}${tab('regl')}</div>
+    <div class="chat" style="grid-template-columns:1fr;min-height:0">
       <div class="chat-main">
-        <div class="chat-head"><span class="tav tc-teal" style="width:42px;height:42px;border-radius:12px;display:grid;place-items:center;color:#fff">${ic('bot')}</span><div><h2>Assistant PréventIA</h2><div class="small muted">Vous échangez avec une intelligence artificielle · réponses à vérifier</div></div></div>
-        <div class="thread" style="max-height:none">
-          <div class="msg me"><span class="avatar" style="width:32px;height:32px;font-size:.72rem">${esc(initials(S.profile?.full_name))}</span><div class="bubble"><div class="mh"><b>Moi</b></div>Quelles données ai-je le droit de coller dans un outil IA ?</div></div>
-          <div class="msg"><span class="avatar" style="width:32px;height:32px;background:var(--teal-soft)">${ic('bot')}</span><div class="bubble"><div class="mh"><b>Assistant</b> · exemple</div>D'après la <u>Charte d'usage de l'IA</u> : uniquement des données 🟢 fictives ou publiques. Les données 🟠 internes restent dans les outils validés du SPSTI, et les données 🔴 (santé, noms de salariés) sont interdites.</div></div>
-        </div>
-        <div class="composer"><textarea disabled placeholder="Bientôt disponible…"></textarea><button class="btn btn-primary" disabled>${ic('send')}</button></div>
+        <div class="chat-head"><span class="tav tc-teal" style="width:42px;height:42px;border-radius:12px;display:grid;place-items:center;color:#fff">${ic('bot')}</span><div><h2>${esc(m.label)}</h2><div class="small muted">${st.mode==='idee' ? 'Traitement par Mistral, dans l\'Union européenne' : 'Traitement par Claude (Anthropic) · questions générales uniquement'}</div></div>
+          ${st.hist[st.mode].length ? `<button class="btn btn-ghost sm" style="margin-left:auto" data-act="asstClear">Effacer</button>` : ''}</div>
+        <div class="thread" id="asstThread" style="max-height:60vh" aria-live="polite"></div>
+        ${S.demo ? `<div class="composer"><textarea disabled placeholder="Non disponible en mode démonstration."></textarea><button class="btn btn-primary" disabled>${ic('send')}</button></div>`
+          : `<form class="composer" data-form="asst"><label class="sr" for="asstIn">Votre message</label><textarea id="asstIn" name="q" required maxlength="3000" placeholder="${esc(m.ph)}"></textarea><button class="btn btn-primary" type="submit" aria-label="Envoyer" ${st.busy?'disabled':''}>${ic('send')}</button></form>`}
       </div>
     </div>
-    <p class="small muted" style="margin-top:14px">Une idée d'usage pour l'assistant ? <a href="#/idees/nouvelle">Proposez-la dans la Boîte à idées</a> : elle servira à définir son périmètre.</p>
+    <p class="small muted" style="margin-top:14px">Une autre idée d'usage pour l'assistant ? <a href="#/idees/nouvelle">Proposez-la dans la Boîte à idées</a>.</p>
   </div>`;
 }
 
@@ -2044,7 +2100,7 @@ async function pagePrivacy(){
     <div class="sec"><h3>À quoi sert le portail</h3><div class="txt">Un espace de travail entre professionnels des services de prévention et de santé au travail pour partager des idées, tester des usages de l'IA et mutualiser ce qui fonctionne. Ce n'est <b>pas</b> un outil de suivi des salariés ni des adhérents.</div></div>
     <div class="sec"><h3>Données enregistrées</h3><div class="txt">Votre adresse e-mail, votre nom, votre métier et votre rôle ; vos contributions (idées, commentaires, expérimentations, prompts, documents, messages) ; les dates techniques de connexion conservées par le service d'authentification. Votre nom et votre métier ne sont visibles que par les membres de votre SPSTI ; les autres SPSTI lisent « Membre — nom du SPSTI ». Un message privé n'est lisible que par son expéditeur et son destinataire ; quand vous en recevez un, un e-mail vous prévient (nom de l'expéditeur seulement, jamais le contenu), ce que vous pouvez désactiver dans Mon profil.</div></div>
     <div class="sec"><h3>Ce qui ne doit jamais y figurer</h3><div class="txt">🔴 Aucune donnée de santé, aucun nom de salarié ou d'adhérent, aucun document confidentiel. Un contrôle automatique simple alerte avant l'envoi et chacun peut signaler un contenu aux animateurs, mais la vigilance de chaque membre reste la première protection.</div></div>
-    <div class="sec"><h3>Hébergement et sous-traitants</h3><div class="txt">Données : Supabase, région Union européenne (Irlande). Pages du site : GitHub Pages. E-mails d'avertissement : Brevo (France, UE), qui reçoit seulement votre adresse e-mail et le nom de l'expéditeur. Le portail ne dépose aucun cookie publicitaire ni traceur et ne charge aucune ressource chez un tiers ; seule votre session de connexion est conservée dans votre navigateur. Aucun service d'IA externe n'est appelé par le portail.</div></div>
+    <div class="sec"><h3>Hébergement et sous-traitants</h3><div class="txt">Données : Supabase, région Union européenne (Irlande). Pages du site : GitHub Pages. E-mails d'avertissement : Brevo (France, UE), qui reçoit seulement votre adresse e-mail et le nom de l'expéditeur. Le portail ne dépose aucun cookie publicitaire ni traceur et ne charge aucune ressource chez un tiers ; seule votre session de connexion est conservée dans votre navigateur. L'Assistant IA passe par une fonction serveur (Supabase, UE) qui garde les clés et masque les données personnelles : l'aide à formuler une idée est traitée par Mistral AI (UE), les questions réglementaires générales par Anthropic (Claude, États-Unis). Aucune conversation n'est enregistrée ; seul un journal sans contenu compte les appels.</div></div>
     <div class="sec"><h3>Durée de conservation</h3><div class="txt">${todo(L.conservation)}.</div></div>
     <div class="sec"><h3>Vos droits</h3><div class="txt">Depuis <a href="#/profil">Mon profil</a>, vous pouvez corriger vos informations, télécharger vos données et supprimer votre compte : vos messages sont alors effacés et vos autres contributions conservées sans votre nom. Pour toute autre demande (accès, opposition, réclamation), adressez-vous au contact ci-dessus ; vous pouvez aussi saisir la CNIL.</div></div></div>
     <p class="small" style="margin-top:16px"><a href="#/">← Retour</a></p></div>`;
@@ -2264,6 +2320,17 @@ const FORMS = {
   async team(d){ const r = await api.insert('teams', clean({ org_id:S.org, name:d.name, description:d.description, color:d.color||'teal', is_open:d.is_open!=='0' })); await loadTeams(); toast('Équipe créée 👥'); go('#/echanges/' + r.id); },
   async addMember(d, f){ await api.insert('team_members', { team_id:f.dataset.id, user_id:d.user_id, role:'membre' }); toast('Collègue ajouté·e à l\'équipe'); route(); },
   async challenge(d){ await api.insert('challenges', clean({ ...d, org_id:S.org })); toast('Défi lancé 🎯'); route(); },
+  async asst(d, f){
+    const st = asstState(), mode = st.mode, q = (d.q||'').trim(); if (!q || st.busy) return;
+    if (!await redCheck(q)) return;
+    const h = st.hist[mode]; h.push({ role:'user', content:q }); f.reset(); st.busy = true; renderAsst();
+    const btn = f.querySelector('[type=submit]');
+    try {
+      const msgs = (mode === 'idee' ? h.slice(-1) : h.slice(-6)).map(({ role, content }) => ({ role, content }));
+      h.push({ role:'assistant', content: await iaAppel(mode, msgs) });
+    } catch (e) { h.pop(); toast(errMsg(e), 'err'); f.elements.q.value = q; }
+    finally { st.busy = false; renderAsst(); if (btn) btn.disabled = false; }
+  },
   async profile(d){ const v = clean(d); v.notif_email = !!d.notif_email; await api.update('profiles', { id:S.user.id }, v); await loadContext(); toast('Profil enregistré'); route(); },
   async fdsVerif(d, f){ await api.update('fds', { id:f.dataset.id }, { statut:'verifiee', verifie_par:d.par.trim(), verifie_le:d.le }); toast('FDS marquée vérifiée ✔'); route(); },
   async newOrg(d){ await api.rpc('create_organization', { p_name:d.name, p_short:d.short }); await loadContext(); toast('SPSTI créé. Basculez dessus depuis votre profil pour obtenir son code.'); route(); },
@@ -2340,6 +2407,9 @@ const ACTS = {
   async exitDemo(){ S.demo = false; D = null; await loadContext(); go('#/'); },
   async logout(el, ev){ ev?.preventDefault(); if (S.demo) return ACTS.exitDemo(); await sb.auth.signOut(); await loadContext(); go('#/'); },
   needInspire(){ CUR.inspire = true; },
+  asstMode(el){ asstState().mode = el.dataset.m; route(); },
+  asstClear(){ const st = asstState(); st.hist[st.mode] = []; route(); },
+  asstIdea(el){ const o = asstJSON(asstState().hist.idee[+el.dataset.i]?.content) || {}; CUR.prefill = { title:(o.titre||'').slice(0,140), problem:o.probleme||'', solution:o.solution||'' }; go('#/idees/nouvelle'); },
 
   challengeIdea(el){ CUR.prefill = { problem:'Défi du moment : ' + el.dataset.q + '\n\nMa proposition : ' }; },
   inspire(el){ const [t,p] = INSPIRE[+el.dataset.k]; const f = document.querySelector('form[data-form=idea]').elements; f.namedItem('title').value = t; f.namedItem('problem').value = p; f.namedItem('problem').focus(); renderSimilar(); },
